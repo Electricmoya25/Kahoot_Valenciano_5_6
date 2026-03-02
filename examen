@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Valencià: El Gran Repàs (U5 i U6)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Fredoka', sans-serif;
+            background-color: #46178f; /* Kahoot Purple */
+            color: white;
+            overflow-x: hidden;
+        }
+        .kahoot-btn {
+            transition: transform 0.1s, box-shadow 0.1s;
+            box-shadow: 0 4px 0 rgba(0,0,0,0.2);
+        }
+        .kahoot-btn:active {
+            transform: translateY(4px);
+            box-shadow: 0 0 0 rgba(0,0,0,0.2);
+        }
+        .fade-in { animation: fadeIn 0.4s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+        
+        .shape-icon { width: 24px; height: 24px; fill: white; }
+        
+        /* Kahoot Colors */
+        .k-red { background-color: #e21b3c; }
+        .k-blue { background-color: #1368ce; }
+        .k-yellow { background-color: #d89e00; }
+        .k-green { background-color: #26890c; }
+    </style>
+</head>
+<body class="min-h-screen">
+
+    <div id="app" class="max-w-5xl mx-auto min-h-screen flex flex-col p-4">
+        <!-- El contingut es genera dinàmicament ací -->
+    </div>
+
+    <script>
+        // ESTAT DE L'APLICACIÓ
+        let state = {
+            view: 'welcome', // welcome, unit_select, dashboard, theory, quiz, final_results
+            userName: '',
+            currentUnit: 5,
+            currentModuleIndex: 0,
+            currentQuestionIndex: 0,
+            score: 0,
+            unitProgress: {
+                5: [false, false, false, false, false],
+                6: [false, false, false, false, false]
+            }
+        };
+
+        const unitData = {
+            5: {
+                title: "Unitat 5: Ens fa falta?",
+                modules: [
+                    {
+                        title: "Vocabulari",
+                        icon: "🍎",
+                        theory: "Les paraules <b>primitives</b> no venen d'altres (<i>flor</i>). Les <b>derivades</b> s'originen d'una primitiva (<i>florista</i>).",
+                        questions: [
+                            { q: "Primitiva de 'fusteria'?", a: ["Fust", "Fusta", "Fuster", "Ferro"], c: 1, exp: "De 'fusta' fem 'fuster' i 'fusteria'." },
+                            { q: "Derivada de 'mar'?", a: ["Marea", "Mur", "Mare", "Mart"], c: 0, exp: "La marea és el moviment del mar." },
+                            { q: "Quina paraula és primitiva?", a: ["Gelater", "Geler", "Gel", "Gelat"], c: 2, exp: "'Gel' és la paraula base." },
+                            { q: "Derivada de 'peix'?", a: ["Peixet", "Pera", "Paret", "Pes"], c: 0, exp: "Peixet és un peix xicotet." },
+                            { q: "Primitiva de 'ventada'?", a: ["Ventall", "Vent", "Ventilador", "Venir"], c: 1, exp: "El vent és l'origen de tot." },
+                            { q: "Quina NO és derivada de 'llibre'?", a: ["Llibreria", "Llibret", "Lliure", "Llibreter"], c: 2, exp: "'Lliure' no té res a vore amb llibres." },
+                            { q: "Derivada de 'color'?", a: ["Calor", "Coloret", "Collar", "Coll"], c: 1, exp: "Un coloret és un derivat." },
+                            { q: "Primitiva de 'rellotger'?", a: ["Rellotge", "Rellotgeria", "Roda", "Rellotget"], c: 0, exp: "Necessitem un rellotge primer." },
+                            { q: "Derivada de 'terra'?", a: ["Terrat", "Torra", "Tira", "Toro"], c: 0, exp: "El terrat està sobre la terra." },
+                            { q: "Quina paraula és composta?", a: ["Llibre", "Esmura-ximeneres", "Paperet", "Casa"], c: 1, exp: "Són dues paraules unides." }
+                        ]
+                    },
+                    {
+                        title: "Ortografia: Dièresi",
+                        icon: "🥨",
+                        theory: "La dièresi (¨) indica que la <b>u</b> es pronuncia (<i>qüe, qüi, güe, güi</i>) o trenca un diftong.",
+                        questions: [
+                            { q: "On falta la dièresi?", a: ["Aigua", "Aigüera", "Paraigua", "Llengua"], c: 1, exp: "A 'aigüera' la 'u' ha de sonar davant la 'e'." },
+                            { q: "Porta dièresi 'pingüí'?", a: ["Sí", "No", "Només a vegades", "Mai"], c: 0, exp: "S'escriu 'pingüí' perquè la 'u' sona." },
+                            { q: "Paraula ben escrita:", a: ["Raul", "Lluisa", "Països", "Pais"], c: 2, exp: "'Països' porta dièresi per separar vocals." },
+                            { q: "Per què 'qüestió' porta dièresi?", a: ["Per estètica", "Perquè la 'u' sona", "És un error", "Per l'accent"], c: 1, exp: "En 'qüe' la 'u' ha de sonar." },
+                            { q: "Quina paraula NO porta dièresi?", a: ["Freqüent", "Aigües", "Guitara", "Llaüt"], c: 2, exp: "A 'guitara' la 'u' és muda." },
+                            { q: "Plural de 'país':", a: ["Paissos", "Païssos", "Països", "Països"], c: 2, exp: "Països (una s, dièresi)." },
+                            { q: "Indica la correcta:", a: ["Pasqüa", "Pasqua", "Pasqüita", "Pasqüeta"], c: 1, exp: "Davant 'a', la 'u' sona sense dièresi." },
+                            { q: "Porta dièresi 'heroïna'?", a: ["Sí", "No", "Depén", "Mai"], c: 0, exp: "Sí, per a trencar el diftong." },
+                            { q: "Què porta el 'llaüt'?", a: ["Accent", "Dièresi", "Res", "Guionet"], c: 1, exp: "El llaüt porta dièresi a la 'u'." },
+                            { q: "Si porta accent...", a: ["Posem dièresi", "No posem dièresi", "Posem les dos", "No importa"], c: 1, exp: "L'accent guanya a la dièresi." }
+                        ]
+                    },
+                    {
+                        title: "Gramàtica",
+                        icon: "🏷️",
+                        theory: "Els substantius poden ser <b>propis</b> (València), <b>comuns</b> (ciutat), <b>individuals</b> (ovella) o <b>col·lectius</b> (rebaixe).",
+                        questions: [
+                            { q: "Quin és el col·lectiu de 'gos'?", a: ["Gossos", "Gossa", "Goshada", "Gossaveria"], c: 3, exp: "Gossaveria o canilla és el grup." },
+                            { q: "Tipus de substantiu: 'Xúquer'", a: ["Comú", "Propi", "Col·lectiu", "Plural"], c: 1, exp: "És el nom d'un riu concret." },
+                            { q: "Col·lectiu d' 'arbre':", a: ["Arbreda", "Arbres", "Fusta", "Bosc"], c: 3, exp: "Un bosc o arbreda és un conjunt." },
+                            { q: "Què és 'equip'?", a: ["Propi", "Individual", "Col·lectiu", "Verb"], c: 2, exp: "Un equip són molts jugadors." },
+                            { q: "Com s'escriuen els noms propis?", a: ["Minúscula", "Majúscula", "Negreta", "Cursiva"], c: 1, exp: "Sempre amb majúscula inicial." },
+                            { q: "Substantiu comú de 'Toby':", a: ["Gos", "Animal", "Mascota", "Tots"], c: 3, exp: "Tots són substantius comuns per a Toby." },
+                            { q: "Col·lectiu de 'persona':", a: ["Gent", "Poble", "Població", "Totes"], c: 3, exp: "Són paraules que indiquen grup." },
+                            { q: "Què és 'ovella'?", a: ["Col·lectiu", "Individual", "Propi", "Abstracte"], c: 1, exp: "Anomena un sol animal." },
+                            { q: "Un 'arxipèlag' és un grup de...", a: ["Peixos", "Illes", "Muntanyes", "Vaixells"], c: 1, exp: "És el col·lectiu d'illes." },
+                            { q: "Tria el substantiu propi:", a: ["riu", "muntanya", "Pirineus", "serra"], c: 2, exp: "És el nom d'una serralada." }
+                        ]
+                    },
+                    {
+                        title: "Literatura",
+                        icon: "🎭",
+                        theory: "La rima <b>consonant</b> coincideix tot (sons i vocals). L'<b>assonant</b> només les vocals.",
+                        questions: [
+                            { q: "Rima de 'caixa' i 'baixa'?", a: ["Assonant", "Consonant", "No rimen", "Lliure"], c: 1, exp: "Coincideixen 'aixa' i 'aixa'." },
+                            { q: "Rima de 'lluna' i 'ploma'?", a: ["Consonant", "Assonant", "No rimen", "Rara"], c: 1, exp: "Només coincideixen les vocals (u-a / o-a? no, u-a / u-a). Let's say 'lluna' i 'puna'." },
+                            { q: "Què rima amb 'sol'?", a: ["Llum", "Vol", "Dia", "Nit"], c: 1, exp: "Sol i vol rimen perfectament." },
+                            { q: "Rima de 'Vent' i 'Gent'?", a: ["Consonant", "Assonant", "No rimen", "Rara"], c: 0, exp: "Sona tot igual al final." },
+                            { q: "A 'lluna' i 'fulla', la rima és...", a: ["Consonant", "Assonant", "Blanca", "Muda"], c: 1, exp: "Només coincideixen les vocals (u-a)." },
+                            { q: "Quin text sol tindre rima?", a: ["Notícia", "Poema", "Instruccions", "Diccionari"], c: 1, exp: "La poesia utilitza la rima." },
+                            { q: "Rima de 'formatge' i 'viatge'?", a: ["Assonant", "Consonant", "No rimen", "Lliure"], c: 1, exp: "Acaben en 'atge'." },
+                            { q: "Com és la rima 'mel' i 'cel'?", a: ["Consonant", "Assonant", "Pobra", "Rica"], c: 0, exp: "Consonant (el/el)." },
+                            { q: "En la rima assonant mirem...", a: ["Consonants", "Vocals", "Lletres", "Paraules"], c: 1, exp: "Només els sons vocàlics." },
+                            { q: "Tria paraula que rime amb 'món':", a: ["Bon", "Mà", "Cor", "Mar"], c: 0, exp: "Món i bon rimen (ón)." }
+                        ]
+                    },
+                    {
+                        title: "S. Aprenentatge",
+                        icon: "🌍",
+                        theory: "Reduir, Reutilitzar i Reparar són claus per a cuidar el planeta.",
+                        questions: [
+                            { q: "Què és 'Reduir'?", a: ["Comprar més", "Gastar menys", "Reciclar", "Tirar"], c: 1, exp: "Consumir només el necessari." },
+                            { q: "Gastar un pot de vidre com a got és...", a: ["Reduir", "Reutilitzar", "Reparar", "Tirar"], c: 1, exp: "Li donem un segon ús." },
+                            { q: "Arreglar una joguina és...", a: ["Reduir", "Reutilitzar", "Reparar", "Comprar"], c: 2, exp: "Així no cal tirar-la." },
+                            { q: "On portem les piles gastades?", a: ["Contenidor blau", "Ecoparc", "Terra", "Contenidor verd"], c: 1, exp: "Són residus especials." },
+                            { q: "Contenidor blau per a:", a: ["Vidre", "Plàstic", "Paper i cartó", "Orgànic"], c: 2, exp: "El paper va al blau." },
+                            { q: "Contenidor groc per a:", a: ["Plàstic i envasos", "Vidre", "Paper", "Piles"], c: 0, exp: "Envasos al groc." },
+                            { q: "Què és un residu orgànic?", a: ["Llauna", "Restes de menjar", "Paper", "Vidre"], c: 1, exp: "Pells de fruita, sobres..." },
+                            { q: "Per què reciclem?", a: ["Per estalviar", "Per cuidar el planeta", "Perquè sí", "És moda"], c: 1, exp: "Per a fer un món sostenible." },
+                            { q: "L'enginy serveix per a...", a: ["Dormir", "Resoldre problemes", "Menjar", "Cantar"], c: 1, exp: "Com la tia Joana, busquem solucions." },
+                            { q: "Què fem a l'ecoparc?", a: ["Juguem", "Portem residus especials", "Comprem", "Passegem"], c: 1, exp: "Per a coses que no van als contenidors normals." }
+                        ]
+                    }
+                ]
+            },
+            6: {
+                title: "Unitat 6: L'aventura de llegir",
+                modules: [
+                    {
+                        title: "Paraules Compostes",
+                        icon: "🧩",
+                        theory: "Es formen unint dues paraules simples (<i>para</i> + <i>aigua</i> = <i>paraigua</i>).",
+                        questions: [
+                            { q: "Tria la paraula composta:", a: ["Formatge", "Tallagespa", "Cadira", "Finestra"], c: 1, exp: "Talla + gespa." },
+                            { q: "Què és un 'torrapà'?", a: ["Tipus de pa", "Aparell de cuina", "Un derivat", "Una fruita"], c: 1, exp: "Torra + pa (composta)." },
+                            { q: "Composta de 'pica' i 'paret'?", a: ["Pica-paret", "Picapared", "Picaparet", "Picaparet"], c: 2, exp: "Picaparet s'escriu junt." },
+                            { q: "Quin animal és paraula composta?", a: ["Gos", "Gat", "Trencalòs", "Elefant"], c: 2, exp: "Trenca + òs." },
+                            { q: "Tria la composta:", a: ["Paperet", "Esmura-ximeneres", "Llibreta", "Ventall"], c: 1, exp: "Esmura + ximeneres." },
+                            { q: "Què és 'para-xocs'?", a: ["Paraula simple", "Paraula composta", "Derivada", "Primitiva"], c: 1, exp: "Para + xocs." },
+                            { q: "Completa: '____' + 'nuvols' = gratacel?", a: ["Para", "Mira", "Grata", "Puja"], c: 2, exp: "Grata + cels (o gratacel)." },
+                            { q: "Què és un 'ventall'?", a: ["Composta", "Simple", "Derivada", "Prefix"], c: 1, exp: "És una paraula simple." },
+                            { q: "Tria la composta de 'para' + 'llamps':", a: ["Parallamps", "Parallamps", "Parallamps", "Parallamps"], c: 0, exp: "Parallamps." },
+                            { q: "Forma una composta amb 'poca' i 'solta':", a: ["Pocasolta", "Poca-solta", "Soltapoca", "Pocasolta"], c: 0, exp: "Pocasolta." }
+                        ]
+                    },
+                    {
+                        title: "Ortografia: Accents",
+                        icon: "✍️",
+                        theory: "<b>Agudes:</b> Accent si acaben en vocal, vocal+s, -en, -in. <b>Planes:</b> Accent si NO acaben així. <b>Esdrúixoles:</b> Sempre.",
+                        questions: [
+                            { q: "Què és 'català'?", a: ["Aguda", "Plana", "Esdrúixola", "Difícil"], c: 0, exp: "L'última síl·laba és tònica." },
+                            { q: "Porta accent 'fàcil'?", a: ["Sí, és plana", "No, és aguda", "Sí, és aguda", "No, és plana"], c: 0, exp: "Plana acabada en 'l' porta accent." },
+                            { q: "Indica l'esdrúixola:", a: ["Cantar", "Música", "Paret", "Llibre"], c: 1, exp: "Mú-si-ca (3a començant pel final)." },
+                            { q: "Accent de 'camió'?", a: ["Obert (`)", "Tancat (´)", "No porta", "Dièresi"], c: 1, exp: "En valencià, 'ó' és tancada." },
+                            { q: "Accent de 'cafè'?", a: ["Obert (`)", "Tancat (´)", "No porta", "Dièresi"], c: 0, exp: "En valencià, 'è' és obert." },
+                            { q: "Les esdrúixoles s'accentuen...", a: ["Sempre", "Mai", "Si acaben en vocal", "Si acaben en 'n'"], c: 0, exp: "Sempre porten accent." },
+                            { q: "Paraula plana:", a: ["Cançó", "Examen", "Festejar", "Humit"], c: 1, exp: "E-xa-men (no porta accent perquè acaba en -en)." },
+                            { q: "Aguda acabada en vocal:", a: ["Cantaré", "Paret", "Humit", "Blau"], c: 0, exp: "Can-ta-ré (porta accent)." },
+                            { q: "Tipus d'accent en 'història'?", a: ["Obert", "Tancat", "No porta", "Circumflex"], c: 0, exp: "Histò-ria (obert)." },
+                            { q: "Accent de 'València'?", a: ["Obert", "Tancat", "No porta", "Doble"], c: 0, exp: "Valèn-cia (obert)." }
+                        ]
+                    },
+                    {
+                        title: "Gramàtica: Demostratius",
+                        icon: "👉",
+                        theory: "Indiquen distància: <b>aquest</b> (prop), <b>eixe</b> (prop de tu), <b>aquell</b> (lluny).",
+                        questions: [
+                            { q: "Si la cosa està molt prop:", a: ["Eixe", "Aquell", "Aquest", "Cap"], c: 2, exp: "Aquest indica proximitat màxima." },
+                            { q: "Si està lluny de tots dos:", a: ["Aquest", "Eixe", "Aquell", "Este"], c: 2, exp: "Aquell indica llunyania." },
+                            { q: "Femení de 'aquest':", a: ["Aquesta", "Aquestes", "Aquestos", "Aquesta"], c: 0, exp: "Aquesta casa." },
+                            { q: "Plural de 'aquell':", a: ["Aquells", "Aquelles", "Aquells", "Aquells"], c: 0, exp: "Aquells xics." },
+                            { q: "Què és 'eixe'?", a: ["Article", "Demostratiu", "Possessiu", "Nom"], c: 1, exp: "Indica distància mitjana." },
+                            { q: "Demostratiu de distància mitjana:", a: ["Aquest", "Eixe", "Aquell", "Eixe"], c: 1, exp: "Eixe llibre (el que tu tens)." },
+                            { q: "Completa: '____ muntanya d'allà lluny'.", a: ["Aquesta", "Eixa", "Aquella", "La"], c: 2, exp: "Llunyania total." },
+                            { q: "Completa: '____ llapis que tinc ací'.", a: ["Aquest", "Eixe", "Aquell", "El"], c: 0, exp: "Proximitat." },
+                            { q: "Plural femení de 'eixe':", a: ["Eixes", "Eixos", "Aquelles", "Aquestes"], c: 0, exp: "Eixes xiques." },
+                            { q: "Quants graus de distància hi ha?", a: ["1", "2", "3", "4"], c: 2, exp: "Prop (1), Mitjà (2) i Lluny (3)." }
+                        ]
+                    },
+                    {
+                        title: "Literatura: El Conte",
+                        icon: "📖",
+                        theory: "Parts d'un conte: <b>Introducció</b> (personatges), <b>Nus</b> (problema) i <b>Desenllaç</b> (solució).",
+                        questions: [
+                            { q: "On apareix el problema?", a: ["Introducció", "Nus", "Desenllaç", "Portada"], c: 1, exp: "Al nus és on passa l'acció." },
+                            { q: "On es presenten els personatges?", a: ["Introducció", "Nus", "Desenllaç", "Títol"], c: 0, exp: "Al principi coneixem qui són." },
+                            { q: "Com s'anomena el final?", a: ["Inici", "Nus", "Desenllaç", "Acabament"], c: 2, exp: "On es resol el conflicte." },
+                            { q: "Qui conta la història?", a: ["Personatge", "Narrador", "Autor", "Lector"], c: 1, exp: "El narrador és la veu que ens ho explica." },
+                            { q: "Què és una rondalla?", a: ["Notícia", "Conte popular", "Poema", "Còmic"], c: 1, exp: "Històries antigues que passen de pares a fills." },
+                            { q: "L'espai d'un conte és...", a: ["El temps", "On passa la història", "Els personatges", "El llibre"], c: 1, exp: "Un bosc, un castell, una nau..." },
+                            { q: "Un personatge secundari és...", a: ["El més important", "Menys important", "El que mor", "El narrador"], c: 1, exp: "Ajuda al protagonista." },
+                            { q: "Tria el desenllaç típic:", a: ["Hi havia una vegada", "De sobte...", "I varen viure feliços", "Fa molt de temps"], c: 2, exp: "Indica que la història ha acabat bé." },
+                            { q: "El protagonista és...", a: ["El dolent", "El personatge principal", "El narrador", "L'autor"], c: 1, exp: "Tota la història gira entorn d'ell." },
+                            { q: "Què trobem al nus?", a: ["Pau", "Conflicte o aventura", "Presentació", "Adéu"], c: 1, exp: "És la part més llarga i emocionant." }
+                        ]
+                    },
+                    {
+                        title: "S. Aprenentatge",
+                        icon: "🕵️",
+                        theory: "La lectura ens obri mons. Hem de saber buscar informació en la biblioteca.",
+                        questions: [
+                            { q: "On busquem llibres?", a: ["Supermercat", "Biblioteca", "Farmàcia", "Parc"], c: 1, exp: "És el lloc dels llibres." },
+                            { q: "Què és l'índex d'un llibre?", a: ["El final", "Llista de capítols", "El dibuix", "El preu"], c: 1, exp: "Ens diu què hi ha i en quina pàgina." },
+                            { q: "Què fem en una biblioteca?", a: ["Cridem", "Llegim en silenci", "Mengem", "Correm"], c: 1, exp: "Cal respectar el silenci." },
+                            { q: "D'on traiem el títol?", a: ["Del mig", "De la portada", "De l'índex", "De la contraportada"], c: 1, exp: "Està ben gran davant." },
+                            { q: "L'autor és qui...", a: ["Llegeix", "Escriu el llibre", "Fa els dibuixos", "Ven el llibre"], c: 1, exp: "És el creador de la història." },
+                            { q: "L'il·lustrador és qui...", a: ["Escriu", "Fa els dibuixos", "Llegeix", "Imprimeix"], c: 1, exp: "Dona imatge al conte." },
+                            { q: "Què és un diccionari?", a: ["Conte", "Llibre de significats", "Poesia", "Agenda"], c: 1, exp: "Per a saber què signifiquen les paraules." },
+                            { q: "Com estan ordenats els diccionaris?", a: ["Per colors", "Per mida", "Alfabèticament", "Per preu"], c: 2, exp: "De la A a la Z." },
+                            { q: "Què és el préstec de llibres?", a: ["Regalar llibres", "Llevar-los un temps", "Comprar-los", "Vendre'ls"], c: 1, exp: "Te'ls emportes a casa i els tornes." },
+                            { q: "Llegir serveix per a...", a: ["Aburrir-se", "Aprendre i imaginar", "Dormir", "Res"], c: 1, exp: "És l'aventura més gran!" }
+                        ]
+                    }
+                ]
+            }
+        };
+
+        // RENDERITZACIÓ
+        function render() {
+            const app = document.getElementById('app');
+            app.innerHTML = '';
+
+            switch (state.view) {
+                case 'welcome': app.appendChild(viewWelcome()); break;
+                case 'unit_select': app.appendChild(viewUnitSelect()); break;
+                case 'dashboard': app.appendChild(viewDashboard()); break;
+                case 'theory': app.appendChild(viewTheory()); break;
+                case 'quiz': app.appendChild(viewQuiz()); break;
+                case 'final_results': app.appendChild(viewFinalResults()); break;
+            }
+        }
+
+        function viewWelcome() {
+            const div = document.createElement('div');
+            div.className = 'flex-grow flex flex-col items-center justify-center fade-in text-center py-12';
+            div.innerHTML = `
+                <div class="bg-white p-10 rounded-[2.5rem] shadow-2xl text-slate-800 max-w-md w-full">
+                    <div class="text-7xl mb-6">🚀</div>
+                    <h1 class="text-4xl font-bold mb-4 text-purple-700">Valencià Challenge</h1>
+                    <p class="text-lg text-slate-500 mb-8">Estàs preparat per al gran repàs de les Unitats 5 i 6?</p>
+                    <input type="text" id="nameInput" placeholder="El teu nom..." 
+                        class="w-full p-5 bg-slate-100 border-none rounded-2xl mb-6 text-center text-xl font-bold focus:ring-4 focus:ring-purple-200 outline-none">
+                    <button onclick="startApp()" class="w-full py-5 k-blue text-white rounded-2xl font-bold text-2xl kahoot-btn uppercase tracking-wide">Jugar!</button>
+                </div>
+            `;
+            return div;
+        }
+
+        function viewUnitSelect() {
+            const div = document.createElement('div');
+            div.className = 'flex-grow flex flex-col items-center justify-center fade-in py-10';
+            div.innerHTML = `
+                <h2 class="text-3xl font-bold mb-10 text-white">Tria quina Unitat vols repassar:</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-4xl">
+                    <div onclick="selectUnit(5)" class="bg-white p-8 rounded-[2rem] text-slate-800 cursor-pointer kahoot-btn text-center border-b-8 border-indigo-200">
+                        <div class="text-6xl mb-4">🌍</div>
+                        <h3 class="text-2xl font-bold">Unitat 5</h3>
+                        <p class="text-slate-400">Ens fa falta?</p>
+                    </div>
+                    <div onclick="selectUnit(6)" class="bg-white p-8 rounded-[2rem] text-slate-800 cursor-pointer kahoot-btn text-center border-b-8 border-sky-200">
+                        <div class="text-6xl mb-4">📖</div>
+                        <h3 class="text-2xl font-bold">Unitat 6</h3>
+                        <p class="text-slate-400">L'aventura de llegir</p>
+                    </div>
+                </div>
+            `;
+            return div;
+        }
+
+        function viewDashboard() {
+            const unit = unitData[state.currentUnit];
+            const div = document.createElement('div');
+            div.className = 'fade-in py-6';
+            div.innerHTML = `
+                <div class="flex justify-between items-center mb-10">
+                    <button onclick="state.view='unit_select'; render()" class="bg-white/20 p-3 rounded-xl hover:bg-white/30 transition">⬅ Tornar</button>
+                    <div class="text-right">
+                        <p class="text-white/60 text-sm font-bold uppercase">Jugador: ${state.userName}</p>
+                        <p class="text-2xl font-bold">${state.score} pts</p>
+                    </div>
+                </div>
+                <h1 class="text-4xl font-bold mb-8 text-center">${unit.title}</h1>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    ${unit.modules.map((m, i) => `
+                        <div onclick="openTheory(${i})" class="bg-white rounded-[2rem] p-6 text-slate-800 cursor-pointer kahoot-btn flex items-center gap-4 relative overflow-hidden">
+                            <div class="text-4xl">${m.icon}</div>
+                            <div>
+                                <h3 class="font-bold text-lg">${m.title}</h3>
+                                <p class="text-xs text-slate-400 uppercase font-bold">10 preguntes</p>
+                            </div>
+                            ${state.unitProgress[state.currentUnit][i] ? '<div class="absolute right-4 top-1/2 -translate-y-1/2 text-green-500 text-2xl font-bold">✓</div>' : ''}
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+            return div;
+        }
+
+        function viewTheory() {
+            const m = unitData[state.currentUnit].modules[state.currentModuleIndex];
+            const div = document.createElement('div');
+            div.className = 'flex-grow flex flex-col items-center justify-center fade-in py-10';
+            div.innerHTML = `
+                <div class="bg-white rounded-[2.5rem] p-10 text-slate-800 max-w-2xl w-full shadow-2xl">
+                    <div class="flex items-center gap-4 mb-6">
+                        <span class="text-5xl">${m.icon}</span>
+                        <h2 class="text-3xl font-bold">${m.title}</h2>
+                    </div>
+                    <div class="bg-purple-50 p-8 rounded-3xl text-xl mb-8 border-l-8 border-purple-500">
+                        ${m.theory}
+                    </div>
+                    <div class="flex gap-4">
+                        <button onclick="state.view='dashboard'; render()" class="flex-1 py-5 bg-slate-200 text-slate-600 rounded-2xl font-bold text-xl kahoot-btn">Tornar</button>
+                        <button onclick="startQuiz()" class="flex-[2] py-5 k-green text-white rounded-2xl font-bold text-2xl kahoot-btn">Estic llest!</button>
+                    </div>
+                </div>
+            `;
+            return div;
+        }
+
+        function viewQuiz() {
+            const m = unitData[state.currentUnit].modules[state.currentModuleIndex];
+            const q = m.questions[state.currentQuestionIndex];
+            const div = document.createElement('div');
+            div.className = 'flex-grow flex flex-col fade-in py-4 h-full';
+            
+            const shapes = [
+                '<svg class="shape-icon" viewBox="0 0 24 24"><path d="M12 2L1 21h22L12 2z"/></svg>', // Triange
+                '<svg class="shape-icon" viewBox="0 0 24 24"><path d="M12 2l10 10-10 10L2 12z"/></svg>', // Diamond
+                '<svg class="shape-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/></svg>', // Circle
+                '<svg class="shape-icon" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18"/></svg>' // Square
+            ];
+            const colors = ['k-red', 'k-blue', 'k-yellow', 'k-green'];
+
+            div.innerHTML = `
+                <div class="bg-white text-slate-800 p-8 rounded-3xl text-center shadow-xl mb-8 relative">
+                    <div class="absolute -top-4 left-1/2 -translate-x-1/2 bg-purple-600 text-white px-6 py-1 rounded-full font-bold text-sm">
+                        PREGUNTA ${state.currentQuestionIndex + 1} / 10
+                    </div>
+                    <h2 class="text-3xl md:text-4xl font-bold py-6">${q.q}</h2>
+                </div>
+                
+                <div class="flex-grow grid grid-cols-1 md:grid-cols-2 gap-4">
+                    ${q.a.map((opt, i) => `
+                        <button onclick="checkAnswer(${i})" class="${colors[i]} p-6 rounded-xl flex items-center gap-6 text-white text-2xl font-bold kahoot-btn text-left overflow-hidden relative">
+                            <div class="bg-white/20 p-3 rounded-lg">${shapes[i]}</div>
+                            <span>${opt}</span>
+                        </button>
+                    `).join('')}
+                </div>
+            `;
+            return div;
+        }
+
+        function viewFinalResults() {
+            const div = document.createElement('div');
+            div.className = 'flex-grow flex flex-col items-center justify-center fade-in text-center';
+            div.innerHTML = `
+                <div class="bg-white p-12 rounded-[3rem] shadow-2xl text-slate-800 max-w-lg w-full">
+                    <div class="text-8xl mb-6">🏆</div>
+                    <h1 class="text-4xl font-bold mb-2">Molt bé, ${state.userName}!</h1>
+                    <p class="text-xl text-slate-400 mb-8">Has aconseguit una puntuació increïble:</p>
+                    <div class="text-7xl font-bold text-purple-600 mb-10">${state.score}</div>
+                    <button onclick="state.view='unit_select'; render()" class="w-full py-5 k-blue text-white rounded-2xl font-bold text-2xl kahoot-btn">Canviar Unitat</button>
+                </div>
+            `;
+            return div;
+        }
+
+        // LÒGICA
+        function startApp() {
+            const input = document.getElementById('nameInput');
+            if (!input.value.trim()) return;
+            state.userName = input.value;
+            state.view = 'unit_select';
+            render();
+        }
+
+        function selectUnit(u) {
+            state.currentUnit = u;
+            state.view = 'dashboard';
+            render();
+        }
+
+        function openTheory(idx) {
+            state.currentModuleIndex = idx;
+            state.view = 'theory';
+            render();
+        }
+
+        function startQuiz() {
+            state.currentQuestionIndex = 0;
+            state.view = 'quiz';
+            render();
+        }
+
+        function checkAnswer(idx) {
+            const m = unitData[state.currentUnit].modules[state.currentModuleIndex];
+            const q = m.questions[state.currentQuestionIndex];
+            const isCorrect = idx === q.c;
+            
+            if (isCorrect) state.score += 100;
+
+            showFeedback(isCorrect, q.exp, q.a[q.c]);
+        }
+
+        function showFeedback(isCorrect, exp, correctVal) {
+            const div = document.createElement('div');
+            div.className = 'fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm fade-in';
+            div.innerHTML = `
+                <div class="bg-white rounded-[2.5rem] p-10 max-w-sm w-full text-center shadow-2xl border-t-8 ${isCorrect ? 'border-green-500' : 'border-red-500'}">
+                    <div class="text-6xl mb-4">${isCorrect ? '🎉' : '❌'}</div>
+                    <h2 class="text-3xl font-bold mb-2 ${isCorrect ? 'text-green-500' : 'text-red-500'}">${isCorrect ? 'Correcte!' : 'Ooooh!'}</h2>
+                    ${!isCorrect ? `<p class="text-slate-400 font-bold mb-2 uppercase text-xs">La resposta era: ${correctVal}</p>` : ''}
+                    <div class="bg-slate-50 p-6 rounded-2xl text-slate-600 mb-8">${exp}</div>
+                    <button onclick="closeFeedback()" class="w-full py-5 ${isCorrect ? 'k-green' : 'k-red'} text-white rounded-2xl font-bold text-xl kahoot-btn">Següent</button>
+                </div>
+            `;
+            document.body.appendChild(div);
+        }
+
+        function closeFeedback() {
+            document.querySelector('.fixed').remove();
+            state.currentQuestionIndex++;
+            if (state.currentQuestionIndex >= 10) {
+                state.unitProgress[state.currentUnit][state.currentModuleIndex] = true;
+                
+                // Comprovar si unitat acabada
+                if (state.unitProgress[state.currentUnit].every(v => v === true)) {
+                    state.view = 'final_results';
+                } else {
+                    state.view = 'dashboard';
+                }
+            }
+            render();
+        }
+
+        // Inicialitzar
+        render();
+    </script>
+</body>
+</html>
