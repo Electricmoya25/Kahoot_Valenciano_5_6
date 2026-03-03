@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SKY-COFFEE: Operation New York</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Fredoka:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --md-blue: #000080;
+            --md-dark: #000000;
+            --md-gold: #ffcc00;
+            --md-red: #cc0000;
+            --md-cyan: #00ffff;
+        }
+
+        body {
+            font-family: 'Fredoka', sans-serif;
+            background-color: #111;
+            color: #fff;
+            margin: 0;
+            overflow: hidden;
+            image-rendering: pixelated;
+        }
+
+        .mega-drive-font { font-family: 'Press Start 2P', cursive; }
+
+        /* Estética Mega Drive */
+        .crt-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.15) 50%), 
+                        linear-gradient(90deg, rgba(255, 0, 0, 0.05), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.05));
+            background-size: 100% 4px, 3px 100%;
+            z-index: 1000;
+            pointer-events: none;
+        }
+
+        .scanline {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(to bottom, transparent 50%, rgba(0,0,0,0.3) 51%);
+            background-size: 100% 4px;
+            position: absolute;
+            pointer-events: none;
+            z-index: 999;
+        }
+
+        .bg-scroll {
+            position: absolute;
+            width: 100%;
+            height: 200%;
+            background: linear-gradient(to bottom, #002244, #004488, #002244);
+            z-index: -1;
+            animation: scrollBackground 20s linear infinite;
+        }
+
+        @keyframes scrollBackground {
+            from { transform: translateY(-50%); }
+            to { transform: translateY(0); }
+        }
+
+        .panel-16bit {
+            background: #222;
+            border: 4px solid #444;
+            box-shadow: inset -4px -4px 0px #111, inset 4px 4px 0px #666;
+        }
+
+        .btn-16bit {
+            background: #333;
+            border: 4px solid #555;
+            box-shadow: 4px 4px 0px #000;
+            transition: all 0.1s;
+        }
+
+        .btn-16bit:active {
+            transform: translate(2px, 2px);
+            box-shadow: 2px 2px 0px #000;
+        }
+
+        .coffee-collect {
+            animation: coffeeFloat 1s ease-out forwards;
+        }
+
+        @keyframes coffeeFloat {
+            0% { transform: scale(1) translateY(0); opacity: 1; }
+            100% { transform: scale(2) translateY(-100px); opacity: 0; }
+        }
+
+        .hidden-screen { display: none !important; }
+
+        /* Estilo para los mensajes del piloto */
+        .pilot-bubble {
+            background: #000;
+            border: 3px solid #00ffff;
+            position: relative;
+        }
+        .pilot-bubble::after {
+            content: '';
+            position: absolute;
+            bottom: -15px; left: 20px;
+            border-width: 15px 15px 0 0;
+            border-color: #00ffff transparent;
+        }
+
+        /* Nubes Parallax */
+        .cloud {
+            position: absolute;
+            opacity: 0.4;
+            animation: moveDown var(--speed) linear infinite;
+            z-index: 1;
+        }
+        @keyframes moveDown {
+            from { top: -10%; }
+            to { top: 110%; }
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen">
+    <div class="crt-overlay"></div>
+    <div class="bg-scroll"></div>
+    <div id="cloud-layer"></div>
+
+    <!-- ARCADE CABINET -->
+    <div id="game-container" class="w-full max-w-2xl h-[95vh] panel-16bit relative flex flex-col overflow-hidden z-10">
+        <div class="scanline"></div>
+
+        <!-- HUD: INSTRUMENTAL DE VUELO -->
+        <div id="hud" class="hidden-screen p-4 border-b-4 border-gray-700 bg-black flex justify-between items-center z-50">
+            <div class="flex flex-col">
+                <p class="mega-drive-font text-[8px] text-cyan-400">PILOT WAKE-METER</p>
+                <div class="w-48 h-5 border-2 border-white bg-gray-900 mt-1 relative overflow-hidden">
+                    <div id="wake-bar" class="h-full bg-red-600 transition-all duration-500" style="width: 0%"></div>
+                    <div class="absolute inset-0 flex items-center justify-center">
+                        <span id="wake-val" class="mega-drive-font text-[8px]">0/100</span>
+                    </div>
+                </div>
+            </div>
+            <div class="text-right">
+                <p class="mega-drive-font text-[8px] text-yellow-400">COFFEE COLLECTED</p>
+                <p id="coffee-count" class="mega-drive-font text-lg text-white">00</p>
+            </div>
+        </div>
+
+        <!-- PANTALLA 1: START (1942 STYLE) -->
+        <div id="screen-start" class="flex-1 flex flex-col items-center justify-center p-8 space-y-12 text-center">
+            <div class="relative">
+                <h1 class="mega-drive-font text-3xl md:text-5xl text-white italic drop-shadow-[4px_4px_0px_#ff00ff]">SKY<br>COFFEE</h1>
+                <p class="mega-drive-font text-[10px] text-cyan-400 mt-4 tracking-tighter">TRANS-ATLANTIC MISSION 1992</p>
+            </div>
+            
+            <div class="text-8xl flex gap-4">👩‍✈️<span class="animate-pulse">☕</span></div>
+
+            <div class="w-full max-w-xs space-y-4">
+                <input type="text" id="name-input" placeholder="STEWARDESS NAME" 
+                    class="w-full bg-black border-4 border-cyan-400 p-4 mega-drive-font text-[10px] text-cyan-400 outline-none text-center">
+                <button onclick="bootGame()" class="w-full btn-16bit bg-red-700 hover:bg-red-600 text-white mega-drive-font text-xs py-5">
+                    START MISSION
+                </button>
+            </div>
+            <p class="mega-drive-font text-[8px] text-gray-500 animate-bounce">PRESS START BUTTON</p>
+        </div>
+
+        <!-- PANTALLA 2: BRIEFING (TEORÍA ANTES DE PREGUNTAS) -->
+        <div id="screen-briefing" class="hidden-screen flex-1 p-8 flex flex-col overflow-y-auto">
+            <div class="border-4 border-cyan-400 p-2 mb-6 bg-cyan-900/20">
+                <h2 class="mega-drive-font text-xs text-cyan-400">MANUAL DE OPERACIONES</h2>
+            </div>
+            <div id="theory-content" class="flex-1 text-lg text-gray-200 leading-relaxed space-y-4 bg-black/60 p-6 border-2 border-white/20">
+                <!-- Dinámico -->
+            </div>
+            <button onclick="launchQuestion()" class="mt-8 btn-16bit bg-cyan-600 text-white mega-drive-font text-[10px] py-4">
+                TAKEOFF!
+            </button>
+        </div>
+
+        <!-- PANTALLA 3: ACTION (QUESTIONS) -->
+        <div id="screen-action" class="hidden-screen flex-1 p-6 flex flex-col relative">
+            <div class="mb-4">
+                <span id="sector-name" class="mega-drive-font text-[8px] text-yellow-500">SECTOR: ATLANTIC-01</span>
+            </div>
+            
+            <div class="pilot-bubble p-4 mb-8">
+                <p id="question-text" class="text-lg font-bold text-white"></p>
+            </div>
+
+            <div id="options-container" class="grid grid-cols-1 gap-4 z-10">
+                <!-- Botones -->
+            </div>
+            
+            <!-- Sprite Animado -->
+            <div class="absolute bottom-4 right-4 text-6xl animate-bounce">👩‍✈️</div>
+        </div>
+
+        <!-- PANTALLA 4: FEEDBACK -->
+        <div id="screen-feedback" class="hidden-screen flex-1 flex flex-col items-center justify-center p-8 text-center bg-black/80">
+            <div id="feed-icon" class="text-8xl mb-6"></div>
+            <h2 id="feed-title" class="mega-drive-font text-xl mb-4 text-white"></h2>
+            <div class="bg-gray-800 p-6 border-2 border-white/40 w-full mb-8">
+                <p id="feed-desc" class="text-lg italic text-cyan-200"></p>
+            </div>
+            <button id="btn-continue" class="w-full btn-16bit bg-yellow-600 text-white mega-drive-font text-[10px] py-4">
+                CONTINUE FLIGHT
+            </button>
+        </div>
+
+        <!-- PANTALLA 5: EPIC ENDING -->
+        <div id="screen-end" class="hidden-screen flex-1 p-8 flex flex-col items-center justify-center text-center space-y-8 bg-black">
+            <div id="end-visual" class="text-9xl">✈️🗽</div>
+            <h1 id="end-rank" class="mega-drive-font text-2xl text-yellow-400">RANK: S</h1>
+            <p id="end-message" class="text-lg text-gray-400"></p>
+            <div class="p-6 border-4 border-cyan-400 mega-drive-font text-xl bg-cyan-900/30">
+                TOTAL COFFEES: <span id="final-score">0</span>
+            </div>
+            <button onclick="location.reload()" class="btn-16bit bg-white text-black mega-drive-font text-[10px] p-4">
+                PLAY AGAIN
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // SONIDOS 8-BIT
+        const actx = new (window.AudioContext || window.webkitAudioContext)();
+        function playSfx(freq, type, dur, vol=0.1) {
+            const osc = actx.createOscillator();
+            const g = actx.createGain();
+            osc.type = type;
+            osc.frequency.setValueAtTime(freq, actx.currentTime);
+            g.gain.setValueAtTime(vol, actx.currentTime);
+            g.gain.exponentialRampToValueAtTime(0.01, actx.currentTime + dur);
+            osc.connect(g); g.connect(actx.destination);
+            osc.start(); osc.stop(actx.currentTime + dur);
+        }
+
+        const sfx = {
+            ok: () => { playSfx(600, 'square', 0.1); setTimeout(()=>playSfx(900, 'square', 0.2), 100); },
+            no: () => { playSfx(200, 'sawtooth', 0.4); playSfx(150, 'sawtooth', 0.4); },
+            start: () => { [400, 500, 600].forEach((f,i) => setTimeout(()=>playSfx(f, 'sine', 0.2), i*150)); }
+        };
+
+        // CONTENIDO EDUCATIVO (TEMAS 5 Y 6)
+        const missionStages = [
+            {
+                id: 1, sector: "PREFIJOS DE LUGAR",
+                manual: "Los <b>prefijos</b> de situación indican posición: <br>• <b>sub-</b> (debajo de)<br>• <b>ante-</b> (delante de)<br>• <b>extra-</b> (fuera de)<br>• <b>sobre-</b> (encima de).",
+                questions: [
+                    { q: "¿Qué significa 'extraordinario'?", o: ["Muy común", "Fuera de lo común", "Debajo de lo común"], c: 1, e: "Extra- significa fuera de." },
+                    { q: "Si el piloto vuela 'sobre' las nubes, es una situación...", o: ["Inferior", "Superior", "Anterior"], c: 1, e: "Sobre- indica posición superior." }
+                ]
+            },
+            {
+                id: 2, sector: "ADJETIVOS CON V",
+                manual: "Se escriben con <b>v</b> los adjetivos terminados en:<br><b>-ave, -avo, -eva, -evo, -eve, -iva, -ivo</b>.<br>Ej: suave, octavo, nueva, longevo, breve, deportiva.",
+                questions: [
+                    { q: "Elige el adjetivo correcto:", o: ["Creatibo", "Creativo", "Creartivo"], c: 1, e: "Termina en -ivo, se escribe con v." },
+                    { q: "¿Cómo se escribe el antónimo de 'grave'?", o: ["Lebe", "Leve", "Libre"], c: 1, e: "Leve termina en -eve, va con v." }
+                ]
+            },
+            {
+                id: 3, sector: "NUMERALES / INDEFINIDOS",
+                manual: "• <b>Cardinales</b>: Cantidad exacta (uno, cien).<br>• <b>Ordinales</b>: Orden (primero, décimo).<br>• <b>Indefinidos</b>: Cantidad imprecisa (muchos, pocos).",
+                questions: [
+                    { q: "'Vigésimo' es un...", o: ["Numeral Cardinal", "Numeral Ordinal", "Indefinido"], c: 1, e: "Expresa el orden en una serie." },
+                    { q: "En 'Tengo muchos cafés', 'muchos' es...", o: ["Ordinal", "Cardinal", "Indefinido"], c: 2, e: "Expresa una cantidad imprecisa." }
+                ]
+            },
+            {
+                id: 4, sector: "RIMA Y POESÍA",
+                manual: "<b>Consonante</b>: Riman vocales y consonantes (canción/atención).<br><b>Asonante</b>: Solo riman vocales (rama/mapa).",
+                questions: [
+                    { q: "Rima entre 'vuelo' y 'suelo':", o: ["Asonante", "Consonante", "No riman"], c: 1, e: "Coinciden vocales y consonantes." },
+                    { q: "Rima entre 'café' y 'sed':", o: ["Consonante", "Asonante", "Libre"], c: 1, e: "Solo coinciden las vocales (e)." }
+                ]
+            },
+            {
+                id: 5, sector: "SUFIJOS",
+                manual: "Los <b>sufijos</b> se añaden al final para formar palabras nuevas.<br>Ejemplos: flautista (-ista), panadería (-ería), cucharada (-ada).",
+                questions: [
+                    { q: "Sufijo en 'guitarrista':", o: ["Guitar-", "-rista", "-ista"], c: 2, e: "Se añade -ista a guitarra." },
+                    { q: "¿Cuál tiene el sufijo de lugar '-ería'?", o: ["Heladería", "Helería", "Heladero"], c: 0, e: "Indica el lugar donde se venden helados." }
+                ]
+            },
+            {
+                id: 6, sector: "G / J Y VERBOS",
+                manual: "Verbos en <b>-ger</b> y <b>-gir</b> van con <b>G</b> (elegir).<br>Excepciones: <b>tejer</b> y <b>crujir</b>. <br>También GEN- va con G (gente), excepto jengibre.",
+                questions: [
+                    { q: "¿Cómo se escribe?", o: ["Crujir", "Crugir", "Crurir"], c: 0, e: "Es una de las excepciones a la regla de la G." },
+                    { q: "Completa: 'Me gusta prote_er al piloto'", o: ["g", "j", "h"], c: 0, e: "Proteger termina en -ger, va con G." }
+                ]
+            },
+            {
+                id: 7, sector: "EL VERBO: CONJUGACIÓN",
+                manual: "Nombre del verbo = <b>Infinitivo</b>.<br>1ª: -ar | 2ª: -er | 3ª: -ir.<br>Raíz: Lo que queda al quitar la terminación (AM-ar).",
+                questions: [
+                    { q: "Conjugación de 'dormir':", o: ["1ª", "2ª", "3ª"], c: 2, e: "Termina en -ir." },
+                    { q: "Raíz de 'bebemos':", o: ["Beb-", "Bebe-", "Be-"], c: 0, e: "De beber, quitamos -er." }
+                ]
+            },
+            {
+                id: 8, sector: "CÓMIC Y PUBLICIDAD",
+                manual: "• <b>Eslogan</b>: Frase corta publicitaria.<br>• <b>Bocadillos</b>: Habla del personaje.<br>• <b>Onomatopeyas</b>: Sonidos (¡Ring!, ¡Zas!).",
+                questions: [
+                    { q: "En el cómic, el sonido de dormir es...", o: ["Eslogan", "Bocadillo", "Onomatopeya (Zzz)"], c: 2, e: "Representa el sonido del sueño." },
+                    { q: "Frase para recordar un producto:", o: ["Bocadillo", "Eslogan", "Viñeta"], c: 1, e: "El eslogan es corto y pegadizo." }
+                ]
+            }
+        ];
+
+        let state = {
+            pilotWake: 0,
+            coffees: 0,
+            currentStageIdx: 0,
+            currentQIdx: 0,
+            totalPossible: 0
+        };
+
+        // UI ACTIONS
+        function bootGame() {
+            const name = document.getElementById('name-input').value.trim();
+            if(!name) return alert("ENTER STEWARDESS NAME!");
+            sfx.start();
+            document.getElementById('hud').classList.remove('hidden-screen');
+            showBriefing();
+        }
+
+        function showBriefing() {
+            const stage = missionStages[state.currentStageIdx];
+            document.getElementById('theory-content').innerHTML = stage.manual;
+            showScreen('screen-briefing');
+        }
+
+        function launchQuestion() {
+            const stage = missionStages[state.currentStageIdx];
+            const q = stage.questions[state.currentQIdx];
+            
+            document.getElementById('sector-name').innerText = `SECTOR: ${stage.sector}`;
+            document.getElementById('question-text').innerText = q.q;
+            
+            const container = document.getElementById('options-container');
+            container.innerHTML = "";
+            q.o.forEach((opt, i) => {
+                const btn = document.createElement('button');
+                btn.className = "btn-16bit p-4 text-left text-sm mega-drive-font text-white hover:bg-gray-700";
+                btn.innerHTML = `<span class="text-red-500 mr-2">${String.fromCharCode(65+i)}:</span> ${opt}`;
+                btn.onclick = () => check(i);
+                container.appendChild(btn);
+            });
+            showScreen('screen-action');
+        }
+
+        function check(idx) {
+            const q = missionStages[state.currentStageIdx].questions[state.currentQIdx];
+            const correct = idx === q.c;
+            
+            if(correct) {
+                state.coffees += 5; // 20 preguntas x 5 pts = 100
+                state.pilotWake += 5;
+                sfx.ok();
+                document.getElementById('feed-icon').innerText = "☕✨";
+                document.getElementById('feed-title').innerText = "COFFEE DELIVERED!";
+                document.getElementById('feed-title').className = "mega-drive-font text-xl mb-4 text-cyan-400";
+            } else {
+                sfx.no();
+                document.getElementById('feed-icon').innerText = "💤⚠️";
+                document.getElementById('feed-title').innerText = "PILOT NODS OFF...";
+                document.getElementById('feed-title').className = "mega-drive-font text-xl mb-4 text-red-600";
+            }
+            
+            document.getElementById('feed-desc').innerHTML = q.e;
+            updateHUD();
+            showScreen('screen-feedback');
+        }
+
+        document.getElementById('btn-continue').onclick = () => {
+            state.currentQIdx++;
+            const stage = missionStages[state.currentStageIdx];
+            if(state.currentQIdx < stage.questions.length) {
+                launchQuestion();
+            } else {
+                state.currentStageIdx++;
+                state.currentQIdx = 0;
+                if(state.currentStageIdx < missionStages.length) {
+                    showBriefing();
+                } else {
+                    finishGame();
+                }
+            }
+        };
+
+        function updateHUD() {
+            const wake = Math.min(state.pilotWake, 100);
+            document.getElementById('wake-bar').style.width = wake + "%";
+            document.getElementById('wake-val').innerText = `${wake}/100`;
+            document.getElementById('coffee-count').innerText = state.coffees < 10 ? '0'+state.coffees : state.coffees;
+        }
+
+        function showScreen(id) {
+            document.querySelectorAll('#game-container > div').forEach(d => {
+                if(d.id !== 'hud') d.classList.add('hidden-screen');
+            });
+            document.getElementById(id).classList.remove('hidden-screen');
+        }
+
+        function finishGame() {
+            showScreen('screen-end');
+            const score = state.coffees;
+            document.getElementById('final-score').innerText = score;
+            const rank = document.getElementById('end-rank');
+            const vis = document.getElementById('end-visual');
+            const msg = document.getElementById('end-message');
+
+            if(score >= 90) {
+                rank.innerText = "RANK: SSS (ACE)";
+                vis.innerText = "🗽🎆🦅";
+                msg.innerText = "¡ATERRIZAJE ÉPICO! El piloto está más despierto que nunca. Has aterrizado el Boeing en la Quinta Avenida y Nueva York te recibe con un desfile. ¡Eres la heroína del aire!";
+            } else if(score >= 50) {
+                rank.innerText = "RANK: A (SAFE)";
+                vis.innerText = "🛬🗽";
+                msg.innerText = "¡Misión Cumplida! Has llegado a Nueva York. El piloto está algo cansado pero habéis aterrizado a salvo. ¡Buen trabajo con el café!";
+            } else {
+                rank.innerText = "RANK: E (CRASH)";
+                vis.innerText = "🦈🌊";
+                msg.innerText = "El piloto se durmió sobre el tablero... Habéis amerizado en mitad del Atlántico. Los tiburones saben ahora mucho de gramática.";
+            }
+        }
+
+        // Decoración de Nubes
+        function makeClouds() {
+            const layer = document.getElementById('cloud-layer');
+            for(let i=0; i<8; i++) {
+                const c = document.createElement('div');
+                c.className = 'cloud text-6xl';
+                c.innerText = "☁️";
+                c.style.left = Math.random() * 100 + "%";
+                c.style.top = Math.random() * 100 + "%";
+                c.style.setProperty('--speed', (Math.random() * 10 + 5) + "s");
+                layer.appendChild(c);
+            }
+        }
+        makeClouds();
+    </script>
+</body>
+</html>
