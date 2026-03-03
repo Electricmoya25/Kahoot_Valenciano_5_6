@@ -3,407 +3,378 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reto de Supervivencia: Vuelo Transatlántico</title>
+    <title>Reto de Supervivencia: Destino Nueva York</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@300..700&display=swap" rel="stylesheet">
     <style>
         body {
             font-family: 'Fredoka', sans-serif;
-            background: linear-gradient(135deg, #74ebd5 0%, #9face6 100%);
+            background: #e0f2fe;
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+        }
+        .ocean-bg {
+            background: linear-gradient(180deg, #3b82f6 0%, #1d4ed8 100%);
             min-height: 100vh;
         }
-        .fade-in {
-            animation: fadeIn 0.5s ease-in-out forwards;
+        .glass-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
         }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
+        .transition-all-custom {
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         }
         .hidden-screen {
             display: none !important;
         }
+        .module-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+        /* Animación de nubes */
+        @keyframes moveClouds {
+            from { transform: translateX(-100%); }
+            to { transform: translateX(100vw); }
+        }
+        .cloud {
+            position: absolute;
+            opacity: 0.3;
+            animation: moveClouds 20s linear infinite;
+        }
     </style>
 </head>
-<body class="flex items-center justify-center p-4">
+<body class="ocean-bg flex items-center justify-center p-4 relative overflow-hidden">
+    
+    <!-- Elementos Decorativos -->
+    <div class="cloud text-6xl top-10" style="animation-duration: 25s;">☁️</div>
+    <div class="cloud text-4xl top-40" style="animation-duration: 18s; animation-delay: 5s;">☁️</div>
+    <div class="cloud text-5xl top-80" style="animation-duration: 30s; animation-delay: 2s;">☁️</div>
 
-    <div id="app-container" class="bg-white/95 backdrop-blur-sm w-full max-w-md rounded-3xl shadow-2xl overflow-hidden flex flex-col min-h-[600px] relative border-4 border-white">
+    <div id="main-container" class="w-full max-w-2xl glass-card rounded-[2rem] shadow-2xl relative z-10 overflow-hidden flex flex-col min-h-[85vh]">
         
-        <div id="status-bar" class="hidden-screen bg-blue-600 text-white p-4 shadow-md flex justify-between items-center z-10">
-            <div class="flex flex-col">
-                <span id="player-display" class="font-bold text-lg">Piloto</span>
-                <div class="flex items-center gap-2">
-                    <span class="text-sm">Fuel:</span>
-                    <div class="w-24 bg-blue-900 rounded-full h-3 overflow-hidden border border-blue-400">
-                        <div id="fuel-bar" class="bg-yellow-400 h-full transition-all duration-500 w-0"></div>
-                    </div>
-                    <span id="fuel-text" class="text-sm font-bold text-yellow-300">0/100</span>
+        <!-- BARRA DE ESTADO (Siempre visible después de iniciar) -->
+        <div id="hud" class="hidden-screen bg-white/80 border-b p-4 flex justify-between items-center">
+            <div class="flex flex-col gap-1 w-2/3">
+                <div class="flex justify-between text-xs font-bold text-blue-800 mb-1">
+                    <span id="display-name">Piloto</span>
+                    <span>Fuel: <span id="fuel-count">0</span>/100</span>
+                </div>
+                <div class="w-full bg-blue-100 rounded-full h-4 relative overflow-hidden border border-blue-200">
+                    <div id="fuel-progress" class="bg-gradient-to-r from-yellow-400 to-orange-500 h-full w-0 transition-all duration-500"></div>
                 </div>
             </div>
-            <div id="plane-icon" class="text-3xl transition-transform duration-500">🛩️</div>
-        </div>
-
-        <div id="screen-welcome" class="flex-1 flex flex-col items-center justify-center p-8 text-center fade-in">
-            <div class="text-6xl mb-4 animate-bounce">✈️</div>
-            <h1 class="text-3xl font-bold text-blue-800 mb-2">Vuelo Transatlántico</h1>
-            <p class="text-gray-600 mb-8">Sobrevive al cruce hasta Nueva York demostrando lo que sabes de Castellano. Necesitas al menos 40 de Fuel.</p>
-            <input type="text" id="input-name" placeholder="Tu nombre de piloto..." class="w-full px-4 py-3 rounded-xl border-2 border-blue-200 focus:border-blue-500 focus:outline-none mb-6 text-center text-lg shadow-sm">
-            <button onclick="startGame()" class="bg-blue-600 hover:bg-blue-700 text-white text-xl font-bold py-3 px-8 rounded-xl shadow-lg transform transition active:scale-95 w-full">¡Despegar!</button>
-        </div>
-
-        <div id="screen-dashboard" class="hidden-screen flex-1 flex flex-col p-6 fade-in">
-            <h2 class="text-2xl font-bold text-blue-800 mb-4 text-center">Ruta de Vuelo</h2>
-            <p class="text-sm text-gray-500 text-center mb-6">Selecciona un módulo de navegación.</p>
-            <div class="grid grid-cols-1 gap-4 overflow-y-auto" id="modules-container">
-                </div>
-        </div>
-
-        <div id="screen-game" class="hidden-screen flex-1 flex flex-col p-6 fade-in bg-blue-50/50">
-            <div class="flex-1 flex flex-col justify-center">
-                <span id="module-badge" class="inline-block bg-blue-200 text-blue-800 text-xs font-bold px-3 py-1 rounded-full w-max mb-4 uppercase tracking-wide">Módulo</span>
-                <h3 id="question-text" class="text-xl font-bold text-gray-800 mb-6 leading-relaxed">¿Pregunta?</h3>
-                <div id="options-container" class="flex flex-col gap-3">
-                    </div>
+            <div class="flex flex-col items-center">
+                <div id="plane-avatar" class="text-4xl transition-all duration-700">🛩️</div>
+                <span id="altitude-label" class="text-[10px] font-bold uppercase text-blue-500">Altitud Baja</span>
             </div>
         </div>
 
-        <div id="screen-feedback" class="hidden-screen flex-1 flex flex-col items-center justify-center p-6 text-center fade-in bg-white absolute inset-0 z-20">
-            <div id="feedback-icon" class="text-6xl mb-4">✅</div>
-            <h2 id="feedback-title" class="text-2xl font-bold mb-2 text-gray-800">¡Correcto!</h2>
-            <p id="feedback-explanation" class="text-gray-600 mb-8 text-lg">Explicación aquí.</p>
-            <button onclick="continueGame()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-xl shadow-lg transform transition active:scale-95 w-full mt-auto">Continuar Ruta</button>
+        <!-- PANTALLA 1: BIENVENIDA -->
+        <div id="screen-welcome" class="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-6">
+            <div class="relative">
+                <div class="text-8xl animate-bounce">✈️</div>
+                <div class="absolute -bottom-2 -right-2 text-4xl">🌊</div>
+            </div>
+            <h1 class="text-4xl font-extrabold text-blue-900 leading-tight">Vuelo Transatlántico<br><span class="text-blue-500 text-2xl">Misión Castellano (5 y 6)</span></h1>
+            <p class="text-gray-600 max-w-sm">Cruza el océano hasta Nueva York. Necesitas 40 puntos de fuel para no caer al agua. ¡Con 100 puntos serás Leyenda!</p>
+            
+            <div class="w-full max-w-xs space-y-4">
+                <input type="text" id="player-name-input" placeholder="Nombre del Piloto" 
+                    class="w-full px-6 py-4 rounded-2xl border-2 border-blue-100 focus:border-blue-500 focus:outline-none text-center text-xl shadow-inner bg-blue-50/50">
+                <button id="btn-start" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-2xl text-xl shadow-lg transform active:scale-95 transition-all">
+                    Iniciar Vuelo
+                </button>
+            </div>
         </div>
 
-        <div id="screen-end" class="hidden-screen flex-1 flex flex-col items-center justify-center p-8 text-center fade-in">
-            <div id="end-icon" class="text-7xl mb-6"></div>
-            <h1 id="end-title" class="text-4xl font-bold mb-2">Fin</h1>
-            <p id="end-desc" class="text-gray-600 mb-6 text-lg">Descripción.</p>
-            <div class="bg-blue-100 p-4 rounded-xl w-full mb-8">
-                <p class="text-blue-800 font-bold text-xl">Fuel final: <span id="end-score">0</span>/100</p>
+        <!-- PANTALLA 2: DASHBOARD (MAPA) -->
+        <div id="screen-dashboard" class="hidden-screen flex-1 p-6 flex flex-col">
+            <h2 class="text-2xl font-bold text-blue-900 mb-4 flex items-center gap-2">
+                🗺️ Mapa de Navegación
+            </h2>
+            <div id="module-list" class="grid grid-cols-1 sm:grid-cols-2 gap-4 flex-1">
+                <!-- Módulos inyectados por JS -->
             </div>
-            <button onclick="location.reload()" class="bg-blue-600 text-white font-bold py-3 px-8 rounded-xl shadow-lg">Jugar de nuevo</button>
+        </div>
+
+        <!-- PANTALLA 3: PREGUNTA -->
+        <div id="screen-quiz" class="hidden-screen flex-1 p-6 flex flex-col">
+            <div class="mb-4">
+                <span id="current-module-title" class="text-xs font-bold text-blue-500 uppercase tracking-widest bg-blue-50 px-3 py-1 rounded-full">Tema</span>
+            </div>
+            <h3 id="question-text" class="text-xl font-bold text-gray-800 mb-8 leading-snug">¿Cargando pregunta?</h3>
+            <div id="options-grid" class="grid grid-cols-1 gap-3">
+                <!-- Botones de opciones -->
+            </div>
+        </div>
+
+        <!-- PANTALLA 4: FEEDBACK -->
+        <div id="screen-feedback" class="hidden-screen flex-1 p-8 flex flex-col items-center justify-center text-center">
+            <div id="feedback-icon" class="text-7xl mb-4"></div>
+            <h2 id="feedback-title" class="text-3xl font-bold mb-4"></h2>
+            <div class="bg-blue-50 p-6 rounded-2xl border-2 border-blue-100 mb-8 w-full">
+                <p id="feedback-text" class="text-gray-700 leading-relaxed"></p>
+            </div>
+            <button id="btn-next" class="w-full bg-blue-900 text-white font-bold py-4 rounded-2xl text-xl shadow-md transform active:scale-95 transition-all">
+                Continuar Vuelo
+            </button>
+        </div>
+
+        <!-- PANTALLA 5: FINAL -->
+        <div id="screen-end" class="hidden-screen flex-1 p-8 flex flex-col items-center justify-center text-center space-y-6">
+            <div id="end-emoji" class="text-9xl"></div>
+            <h1 id="end-title" class="text-4xl font-black text-blue-900"></h1>
+            <p id="end-message" class="text-lg text-gray-600"></p>
+            <div class="bg-white border-4 border-blue-500 p-4 rounded-3xl">
+                <p class="text-sm font-bold text-blue-500 uppercase">Puntuación Final</p>
+                <p class="text-5xl font-black text-blue-900"><span id="final-score">0</span>/100</p>
+            </div>
+            <button onclick="location.reload()" class="bg-blue-600 text-white px-8 py-4 rounded-2xl font-bold hover:bg-blue-700">
+                Intentar de nuevo
+            </button>
         </div>
 
     </div>
 
     <script>
-        // Data Structure (Units 5 and 6)
-        const db = [
+        // DATOS DEL JUEGO (Basado en PDF Temas 5 y 6)
+        const gameData = [
             {
-                module: "Tema 5: Vocabulario",
+                id: 1,
+                title: "Prefijos de Situación",
+                icon: "📍",
                 questions: [
-                    {
-                        q: "El prefijo 'sub-' en 'subsuelo' significa...",
-                        options: ["por encima de", "por debajo de", "antes de"],
-                        correct: 1,
-                        success: "¡Bien hecho! [cite_start]Los prefijos de lugar cambian el significado[cite: 364].",
-                        fail: "Error. Los prefijos de lugar indican situación. [cite_start]'Sub-' significa 'por debajo de'[cite: 364, 366]."
-                    },
-                    {
-                        q: "¿Qué prefijo usarías para 'ordinario' indicando que es 'más allá de' lo normal?",
-                        options: ["ante-", "sub-", "extra-"],
-                        correct: 2,
-                        success: "¡Exacto! Extraordinario.",
-                        fail: "Incorrecto. [cite_start]El prefijo es 'extra-', que aporta el significado de 'más allá de'[cite: 366]."
-                    }
+                    { q: "¿Qué significa el prefijo 'sub-' en la palabra 'subsuelo'?", options: ["Al lado de", "Debajo de", "Encima de"], correct: 1, exp: "El prefijo 'sub-' indica situación inferior o 'debajo de'." },
+                    { q: "¿Cuál es el prefijo que significa 'delante de'?", options: ["Sub-", "Extra-", "Ante-"], correct: 2, exp: "'Ante-' indica prioridad o posición delantera (ej. antebrazo)." },
+                    { q: "La palabra 'extraordinario' significa...", options: ["Muy normal", "Fuera de lo normal", "Debajo de lo normal"], correct: 1, exp: "El prefijo 'extra-' significa 'fuera de' o 'más allá de'." },
+                    { q: "¿Cómo se llama el prefijo de 'sobrevolar'?", options: ["Sobre-", "Sub-", "Extra-"], correct: 0, exp: "'Sobre-' indica posición superior." }
                 ]
             },
             {
-                module: "Tema 5: Ortografía",
+                id: 2,
+                title: "Adjetivos con V",
+                icon: "✍️",
                 questions: [
-                    {
-                        q: "Los adjetivos terminados en -ave, -eve, -ivo, -iva se escriben con...",
-                        options: ["b", "v", "depende de la palabra"],
-                        correct: 1,
-                        success: "¡Correcto! [cite_start]Una regla vital para escribir bien[cite: 368].",
-                        [cite_start]fail: "Recuerda: se escriben con v los adjetivos terminados en -ave, -eve, -avo, -ava, -evo, -eva, -ivo, -iva[cite: 368]."
-                    },
-                    {
-                        q: "Selecciona el adjetivo correctamente escrito:",
-                        options: ["creativo", "creatibo", "creatívo"],
-                        correct: 0,
-                        success: "¡Muy bien! [cite_start]Termina en -ivo[cite: 368, 369].",
-                        fail: "La forma correcta es 'creativo'. [cite_start]Se escriben con v los adjetivos terminados en -ivo[cite: 368]."
-                    },
-                    {
-                        q: "¿Cuál es el antónimo de un 'problema leve' usando la regla de la 'v'?",
-                        options: ["grabe", "grave", "difícil"],
-                        correct: 1,
-                        success: "¡Perfecto! [cite_start]Grave termina en -ave[cite: 368, 372].",
-                        fail: "El antónimo es 'grave'. [cite_start]Se escribe con 'v' por terminar en -ave[cite: 368]."
-                    }
+                    { q: "Los adjetivos terminados en -ave, -avo, -eva, -evo, -ivo, -iva se escriben con...", options: ["B", "V", "H"], correct: 1, exp: "Es una regla ortográfica: octavo, suave, nueva, deportivo..." },
+                    { q: "¿Cómo se escribe el antónimo de 'alegre'?", options: ["Grave", "Grabe", "Gravre"], correct: 0, exp: "Grave se escribe con 'v' porque termina en -ave." },
+                    { q: "Selecciona la palabra correcta:", options: ["Nuebo", "Nueva", "Nuera"], correct: 1, exp: "Nueva es un adjetivo terminado en -eva, por tanto lleva 'v'." },
+                    { q: "¿Qué terminación falta en: 'El coche es muy deport___'?", options: ["-ibo", "-ivo", "-ivo con h"], correct: 1, exp: "Deportivo termina en -ivo, se escribe con 'v'." }
                 ]
             },
             {
-                module: "Tema 5: Gramática y Literatura",
+                id: 3,
+                title: "Numerales e Indefinidos",
+                icon: "🔢",
                 questions: [
-                    {
-                        q: "Las palabras 'primero' y 'segundo' son...",
-                        options: ["Numerales cardinales", "Indefinidos", "Numerales ordinales"],
-                        correct: 2,
-                        success: "¡Genial! [cite_start]Indican el orden de manera precisa[cite: 385, 387].",
-                        fail: "Fallo. Los numerales ordinales expresan orden. [cite_start]Por ejemplo: primer día[cite: 387]."
-                    },
-                    {
-                        q: "Si decimos 'muchas flores', la palabra 'muchas' es un...",
-                        options: ["Numeral", "Indefinido", "Adjetivo con v"],
-                        correct: 1,
-                        success: "¡Exacto! [cite_start]Expresa una cantidad imprecisa[cite: 390].",
-                        [cite_start]fail: "Los indefinidos son palabras que expresan cantidades de forma imprecisa, como muchas o pocos[cite: 390]."
-                    },
-                    {
-                        q: "En un poema, si riman vocales y consonantes a partir de la sílaba tónica, es rima...",
-                        options: ["Asonante", "Consonante", "Libre"],
-                        correct: 1,
-                        success: "¡Correcto! [cite_start]Ejemplo: hermosura y dulzura[cite: 428].",
-                        [cite_start]fail: "Hay rima consonante cuando, a partir de la sílaba tónica, son iguales las vocales y las consonantes[cite: 428]."
-                    }
+                    { q: "¿Qué tipo de palabra es 'quinto'?", options: ["Numeral Cardinal", "Numeral Ordinal", "Indefinido"], correct: 1, exp: "Los ordinales expresan orden (primero, segundo...)." },
+                    { q: "¿Cuál de estas palabras es un INDEFINIDO?", options: ["Tres", "Muchos", "Siete"], correct: 1, exp: "Los indefinidos expresan cantidad de forma imprecisa." },
+                    { q: "En 'Tengo siete lápices', la palabra 'siete' es...", options: ["Numeral Cardinal", "Numeral Ordinal", "Indefinido"], correct: 0, exp: "Los cardinales expresan cantidades exactas." },
+                    { q: "'Varios niños jugaban'. 'Varios' es...", options: ["Numeral", "Indefinido", "Nombre"], correct: 1, exp: "Varios indica una cantidad no exacta." }
                 ]
             },
             {
-                module: "Tema 6: Vocabulario",
+                id: 4,
+                title: "Sufijos y Verbos",
+                icon: "⚙️",
                 questions: [
-                    {
-                        q: "Las partículas que se añaden al final de una palabra para formar otras nuevas son...",
-                        options: ["Sufijos", "Prefijos", "Adjetivos"],
-                        correct: 0,
-                        success: "¡Perfecto! [cite_start]Por ejemplo: presentar -> presentador[cite: 519, 520].",
-                        fail: "Son los sufijos. [cite_start]Los sufijos son las partículas que se añaden al final de una palabra para formar otras nuevas[cite: 519]."
-                    },
-                    {
-                        q: "¿Qué sufijo forma la palabra 'panadería' a partir de pan?",
-                        options: ["-ero", "-ería", "-eta"],
-                        correct: 1,
-                        success: "¡Muy bien! [cite_start]Indica el lugar de venta[cite: 520].",
-                        [cite_start]fail: "El sufijo es '-ería', utilizado para formar palabras como panadería[cite: 520, 597]."
-                    }
+                    { q: "¿Qué es un sufijo?", options: ["Partícula al principio", "Partícula al final", "Una rima"], correct: 1, exp: "Los sufijos se añaden al final para formar palabras nuevas." },
+                    { q: "¿Qué palabra tiene el sufijo '-ero'?", options: ["Frutero", "Prefijo", "Extraer"], correct: 0, exp: "Fruta + ero = Frutero (persona u objeto relacionado)." },
+                    { q: "La forma de nombrar a un verbo es el...", options: ["Conjugación", "Sufijo", "Infinitivo"], correct: 2, exp: "El infinitivo es el nombre del verbo (cantar, reír)." },
+                    { q: "¿A qué conjugación pertenece 'vivir'?", options: ["1ª (-ar)", "2ª (-er)", "3ª (-ir)"], correct: 2, exp: "Los verbos terminados en -ir son de la tercera conjugación." }
                 ]
             },
             {
-                module: "Tema 6: Ortografía",
+                id: 5,
+                title: "Ortografía G y J",
+                icon: "🔤",
                 questions: [
-                    {
-                        q: "Se escriben con 'g' los verbos acabados en -ger o -gir, excepto...",
-                        options: ["proteger y rugir", "tejer y crujir", "elegir y fingir"],
-                        correct: 1,
-                        success: "¡Exacto! [cite_start]Esas son las dos excepciones principales[cite: 521].",
-                        [cite_start]fail: "Se escriben con g todos los verbos acabados en -ger o -gir, excepto tejer y crujir[cite: 521]."
-                    },
-                    {
-                        q: "Elige la forma correcta del verbo:",
-                        options: ["Dirigir", "Dirijir", "Dirhigir"],
-                        correct: 0,
-                        success: "¡Excelente! [cite_start]Sigue la regla general de -gir[cite: 521, 522].",
-                        [cite_start]fail: "La forma correcta es 'dirigir' porque los verbos acabados en -gir se escriben con g[cite: 521, 522]."
-                    },
-                    {
-                        q: "Completa: El león empezó a ru_ir.",
-                        options: ["g", "j", "h"],
-                        correct: 0,
-                        success: "¡Correcto! [cite_start]Rugir termina en -gir[cite: 521].",
-                        [cite_start]fail: "Se escribe con 'g' (rugir) cumpliendo la regla de los verbos terminados en -gir[cite: 521]."
-                    }
-                ]
-            },
-            {
-                module: "Tema 6: Gramática",
-                questions: [
-                    {
-                        q: "Los verbos son palabras que expresan...",
-                        options: ["Nombres de cosas", "Cantidades", "Acciones"],
-                        correct: 2,
-                        success: "¡Muy bien! [cite_start]Saltan, corren, juegan...[cite: 540].",
-                        [cite_start]fail: "Los verbos son palabras que expresan acciones[cite: 540]."
-                    },
-                    {
-                        q: "La forma que sirve para nombrar al verbo se llama...",
-                        options: ["Infinitivo", "Conjugación", "Eslogan"],
-                        correct: 0,
-                        success: "¡Genial! [cite_start]Por ejemplo: mirar[cite: 545].",
-                        [cite_start]fail: "La forma que sirve para nombrar el verbo es el infinitivo[cite: 545]."
-                    },
-                    {
-                        q: "Los verbos terminados en '-er' (como comer) pertenecen a la...",
-                        options: ["Primera conjugación", "Segunda conjugación", "Tercera conjugación"],
-                        correct: 1,
-                        success: "¡Correcto! [cite_start]1ª -ar, 2ª -er, 3ª -ir[cite: 547, 548, 549].",
-                        [cite_start]fail: "Los verbos de la segunda conjugación terminan en -er, como comer[cite: 548]."
-                    },
-                    {
-                        q: "El conjunto de todas las formas de un verbo es su...",
-                        options: ["Infinitivo", "Eslogan", "Conjugación"],
-                        correct: 2,
-                        [cite_start]success: "¡Exacto![cite: 542].",
-                        [cite_start]fail: "El conjunto de todas las formas de un verbo es su conjugación[cite: 542]."
-                    }
-                ]
-            },
-            {
-                module: "Tema 6: Comunicación",
-                questions: [
-                    {
-                        q: "En un anuncio publicitario, la frase corta y fácil de recordar es el...",
-                        options: ["Bocadillo", "Eslogan", "Onomatopeya"],
-                        correct: 1,
-                        success: "¡Excelente! [cite_start]Anima a hacer algo o comprar[cite: 564].",
-                        [cite_start]fail: "El eslogan de un anuncio es una frase corta y fácil de recordar que nos anima a comprar o a hacer algo[cite: 564]."
-                    },
-                    {
-                        q: "En un cómic, ¿dónde se escriben las palabras o pensamientos de los personajes?",
-                        options: ["En la línea narrativa", "En el eslogan", "En los bocadillos"],
-                        correct: 2,
-                        success: "¡Perfecto! [cite_start]Tienen diferentes formas según si hablan, piensan o gritan[cite: 588].",
-                        [cite_start]fail: "Se utilizan bocadillos para incluir las palabras que dicen los personajes, sus pensamientos...[cite: 588]."
-                    },
-                    {
-                        q: "Palabras como SPLASH o ¡BOOOM! en un cómic se llaman...",
-                        options: ["Bocadillos", "Onomatopeyas", "Sufijos"],
-                        correct: 1,
-                        success: "¡Genial! [cite_start]Representan sonidos[cite: 589].",
-                        [cite_start]fail: "Se llaman onomatopeyas, y sirven para representar sonidos en las viñetas[cite: 589]."
-                    }
+                    { q: "Los verbos terminados en -ger y -gir se escriben con...", options: ["J", "G", "V"], correct: 1, exp: "Regla: escoger, dirigir, rugir... llevan G." },
+                    { q: "¿Cuáles son las excepciones de -ger / -gir?", options: ["Coger y elegir", "Tejer y crujir", "Rugir y fingir"], correct: 1, exp: "Tejer y crujir son las excepciones que van con J." },
+                    { q: "Completa: 'Debemos prote__er la naturaleza'", options: ["g", "j", "h"], correct: 0, exp: "Proteger acaba en -ger, va con G." },
+                    { q: "¿Cómo se escribe?", options: ["Crujir", "Crugir", "Crurir"], correct: 0, exp: "Crujir es una excepción y va con J." }
                 ]
             }
         ];
 
-        // Flatten questions for this specific "Survival" linear gameplay
-        // A total of 20 questions * 5 points = 100 points
-        let allQuestions = [];
-        db.forEach(mod => {
-            mod.questions.forEach(q => {
-                allQuestions.push({ ...q, moduleName: mod.module });
-            });
-        });
-
-        // Game State
+        // Estado del Juego
         let state = {
-            playerName: "",
-            fuel: 0,
-            currentIndex: 0,
-            completed: false
+            name: "",
+            score: 0,
+            currentModule: null,
+            currentQuestionIdx: 0,
+            completedModules: []
         };
 
-        const scorePerQuestion = 5;
+        // Referencias DOM
+        const screens = ['screen-welcome', 'screen-dashboard', 'screen-quiz', 'screen-feedback', 'screen-end'];
+        const hud = document.getElementById('hud');
+        const playerNameInput = document.getElementById('player-name-input');
+        const btnStart = document.getElementById('btn-start');
 
-        // DOM Elements
-        const elApp = document.getElementById('app-container');
-        const sWelcome = document.getElementById('screen-welcome');
-        const sDash = document.getElementById('screen-dashboard');
-        const sGame = document.getElementById('screen-game');
-        const sFeed = document.getElementById('screen-feedback');
-        const sEnd = document.getElementById('screen-end');
-        const topBar = document.getElementById('status-bar');
-
-        function switchScreen(hideArr, showId) {
-            hideArr.forEach(id => document.getElementById(id).classList.add('hidden-screen'));
-            document.getElementById(showId).classList.remove('hidden-screen');
-            // Re-trigger animation
-            const el = document.getElementById(showId);
-            el.classList.remove('fade-in');
-            void el.offsetWidth;
-            el.classList.add('fade-in');
+        // Función para cambiar de pantalla
+        function showScreen(screenId) {
+            screens.forEach(id => document.getElementById(id).classList.add('hidden-screen'));
+            document.getElementById(screenId).classList.remove('hidden-screen');
         }
 
-        function startGame() {
-            const nameInput = document.getElementById('input-name').value.trim();
-            if (!nameInput) {
-                alert("Por favor, introduce tu nombre de piloto.");
+        // Lógica de Inicio
+        btnStart.addEventListener('click', () => {
+            const name = playerNameInput.value.trim();
+            if (name.length < 2) {
+                playerNameInput.classList.add('border-red-500');
+                setTimeout(() => playerNameInput.classList.remove('border-red-500'), 1000);
                 return;
             }
-            state.playerName = nameInput;
-            document.getElementById('player-display').innerText = state.playerName;
-            topBar.classList.remove('hidden-screen');
-            updateTopBar();
-            loadQuestion();
-            switchScreen(['screen-welcome'], 'screen-game');
-        }
+            state.name = name;
+            document.getElementById('display-name').innerText = state.name;
+            hud.classList.remove('hidden-screen');
+            renderDashboard();
+            showScreen('screen-dashboard');
+        });
 
-        function updateTopBar() {
-            document.getElementById('fuel-text').innerText = `${state.fuel}/100`;
-            document.getElementById('fuel-bar').style.width = `${state.fuel}%`;
+        // Renderizar el mapa de módulos
+        function renderDashboard() {
+            const list = document.getElementById('module-list');
+            list.innerHTML = "";
             
-            const plane = document.getElementById('plane-icon');
-            if(state.fuel === 100) plane.innerText = "🚀"; // Super version!
-            else if(state.fuel >= 40) plane.innerText = "✈️";
-            else plane.innerText = "🛩️";
-        }
+            gameData.forEach(mod => {
+                const isCompleted = state.completedModules.includes(mod.id);
+                const card = document.createElement('div');
+                card.className = `module-card cursor-pointer p-4 rounded-2xl border-2 transition-all-custom flex flex-col items-center justify-center text-center space-y-2 ${isCompleted ? 'bg-green-50 border-green-200' : 'bg-white border-blue-100 hover:border-blue-400'}`;
+                
+                card.innerHTML = `
+                    <div class="text-4xl">${isCompleted ? '✅' : mod.icon}</div>
+                    <div class="font-bold text-blue-900">${mod.title}</div>
+                    <div class="text-[10px] text-blue-400 font-bold uppercase">${isCompleted ? 'Completado' : mod.questions.length + ' Preguntas'}</div>
+                `;
+                
+                if (!isCompleted) {
+                    card.onclick = () => startModule(mod);
+                }
+                list.appendChild(card);
+            });
 
-        function loadQuestion() {
-            if (state.currentIndex >= allQuestions.length) {
-                finishGame();
-                return;
+            // Verificar si todos los módulos están completos para ir al final
+            if (state.completedModules.length === gameData.length) {
+                setTimeout(endGame, 1000);
             }
+        }
 
-            const currentQ = allQuestions[state.currentIndex];
-            document.getElementById('module-badge').innerText = `Pregunta ${state.currentIndex + 1} de ${allQuestions.length} | ${currentQ.moduleName}`;
-            document.getElementById('question-text').innerText = currentQ.q;
+        function startModule(mod) {
+            state.currentModule = mod;
+            state.currentQuestionIdx = 0;
+            showQuestion();
+            showScreen('screen-quiz');
+        }
+
+        function showQuestion() {
+            const mod = state.currentModule;
+            const q = mod.questions[state.currentQuestionIdx];
             
-            const optsContainer = document.getElementById('options-container');
-            optsContainer.innerHTML = '';
+            document.getElementById('current-module-title').innerText = mod.title;
+            document.getElementById('question-text').innerText = q.q;
             
-            currentQ.options.forEach((opt, idx) => {
+            const grid = document.getElementById('options-grid');
+            grid.innerHTML = "";
+            
+            q.options.forEach((opt, idx) => {
                 const btn = document.createElement('button');
-                btn.className = "bg-white border-2 border-blue-200 text-blue-900 font-bold py-4 px-6 rounded-xl shadow-sm hover:bg-blue-50 hover:border-blue-400 transform transition active:scale-95 text-left text-lg";
+                btn.className = "w-full text-left p-4 rounded-xl border-2 border-blue-50 hover:bg-blue-50 hover:border-blue-300 transition-all font-medium text-gray-700 bg-white shadow-sm";
                 btn.innerText = opt;
-                btn.onclick = () => checkAnswer(idx, currentQ);
-                optsContainer.appendChild(btn);
+                btn.onclick = () => handleAnswer(idx);
+                grid.appendChild(btn);
             });
         }
 
-        function checkAnswer(selectedIndex, currentQ) {
-            const isCorrect = selectedIndex === currentQ.correct;
+        function handleAnswer(idx) {
+            const q = state.currentModule.questions[state.currentQuestionIdx];
+            const isCorrect = idx === q.correct;
             
             if (isCorrect) {
-                state.fuel += scorePerQuestion;
-                document.getElementById('feedback-icon').innerText = "✅";
-                document.getElementById('feedback-title').innerText = "¡Excelente Altitud!";
-                document.getElementById('feedback-title').className = "text-3xl font-bold mb-2 text-green-600";
-                document.getElementById('feedback-explanation').innerHTML = currentQ.success;
+                state.score += 5; // Puntuación acelerada para demo, puedes cambiar a 1
+                updateHUD();
+                showFeedback(true, q.exp);
             } else {
-                document.getElementById('feedback-icon').innerText = "⚠️";
-                document.getElementById('feedback-title').innerText = "Turbulencias...";
-                document.getElementById('feedback-title').className = "text-3xl font-bold mb-2 text-red-600";
-                document.getElementById('feedback-explanation').innerHTML = `La correcta era: <strong>${currentQ.options[currentQ.correct]}</strong><br><br>${currentQ.fail}`;
-            }
-
-            updateTopBar();
-            switchScreen(['screen-game'], 'screen-feedback');
-        }
-
-        function continueGame() {
-            state.currentIndex++;
-            if (state.currentIndex >= allQuestions.length) {
-                finishGame();
-            } else {
-                loadQuestion();
-                switchScreen(['screen-feedback'], 'screen-game');
+                showFeedback(false, q.exp);
             }
         }
 
-        function finishGame() {
-            topBar.classList.add('hidden-screen');
-            switchScreen(['screen-game', 'screen-feedback', 'screen-dashboard'], 'screen-end');
+        function updateHUD() {
+            document.getElementById('fuel-count').innerText = state.score;
+            const progress = Math.min(state.score, 100);
+            document.getElementById('fuel-progress').style.width = progress + "%";
             
-            const fIcon = document.getElementById('end-icon');
-            const fTitle = document.getElementById('end-title');
-            const fDesc = document.getElementById('end-desc');
-            document.getElementById('end-score').innerText = state.fuel;
-
-            if (state.fuel === 100) {
-                fIcon.innerText = "🚀🗽";
-                fTitle.innerText = "¡LEYENDA DEL CIELO!";
-                fTitle.className = "text-4xl font-bold mb-2 text-yellow-500";
-                fDesc.innerText = `¡Impresionante, ${state.playerName}! Conseguiste el 100% del Fuel y tu avión evolucionó a Nave Espacial aterrizando en Nueva York. ¡Eres un maestro de Lengua!`;
-            } else if (state.fuel >= 40) {
-                fIcon.innerText = "🛬🗽";
-                fTitle.innerText = "¡RETO SUPERADO!";
-                fTitle.className = "text-4xl font-bold mb-2 text-green-600";
-                fDesc.innerText = `¡Buen trabajo, ${state.playerName}! Cruzaste el Atlántico con éxito y aterrizaste a salvo. Sabes mucho de los Temas 5 y 6.`;
+            const plane = document.getElementById('plane-avatar');
+            const label = document.getElementById('altitude-label');
+            
+            if (state.score >= 100) {
+                plane.innerText = "🚀";
+                label.innerText = "Velocidad Supersónica";
+                label.className = "text-[10px] font-bold uppercase text-orange-500";
+            } else if (state.score >= 40) {
+                plane.innerText = "✈️";
+                label.innerText = "Crucero Seguro";
+                label.className = "text-[10px] font-bold uppercase text-green-500";
             } else {
-                fIcon.innerText = "🌊🛟";
-                fTitle.innerText = "AMERIZAJE FORZOSO";
-                fTitle.className = "text-4xl font-bold mb-2 text-red-600";
-                fDesc.innerText = `Te quedaste sin fuel a mitad de camino, ${state.playerName}. Necesitabas 40 puntos para cruzar. ¡Repasa la teoría y vuelve a intentarlo!`;
+                plane.innerText = "🛩️";
+                label.innerText = "Altitud Baja";
             }
+        }
+
+        function showFeedback(correct, explanation) {
+            const icon = document.getElementById('feedback-icon');
+            const title = document.getElementById('feedback-title');
+            
+            if (correct) {
+                icon.innerText = "⚡";
+                title.innerText = "¡Buen Vuelo!";
+                title.className = "text-3xl font-bold mb-4 text-green-600";
+            } else {
+                icon.innerText = "☁️";
+                title.innerText = "Turbulencia...";
+                title.className = "text-3xl font-bold mb-4 text-orange-600";
+            }
+            
+            document.getElementById('feedback-text').innerText = explanation;
+            showScreen('screen-feedback');
+        }
+
+        document.getElementById('btn-next').onclick = () => {
+            state.currentQuestionIdx++;
+            if (state.currentQuestionIdx < state.currentModule.questions.length) {
+                showQuestion();
+                showScreen('screen-quiz');
+            } else {
+                state.completedModules.push(state.currentModule.id);
+                renderDashboard();
+                showScreen('screen-dashboard');
+            }
+        };
+
+        function endGame() {
+            hud.classList.add('hidden-screen');
+            const emoji = document.getElementById('end-emoji');
+            const title = document.getElementById('end-title');
+            const msg = document.getElementById('end-message');
+            document.getElementById('final-score').innerText = state.score;
+
+            if (state.score >= 100) {
+                emoji.innerText = "🗽🚀";
+                title.innerText = "¡ERES UNA LEYENDA!";
+                msg.innerText = `¡Increíble ${state.name}! Tu avión se transformó en un súper-cohete y has llegado a Nueva York rompiendo todos los récords.`;
+            } else if (state.score >= 40) {
+                emoji.innerText = "🏙️🛬";
+                title.innerText = "¡BIENVENIDO A NY!";
+                msg.innerText = `¡Lo lograste, ${state.name}! Con fuel suficiente para aterrizar en la Gran Manzana. ¡Misión cumplida!`;
+            } else {
+                emoji.innerText = "🛟🌊";
+                title.innerText = "AMERIZAJE FORZOSO";
+                msg.innerText = `Lo sentimos ${state.name}, no hubo fuel suficiente para llegar a la costa. ¡Repasa los temas 5 y 6 y vuelve a despegar!`;
+            }
+            
+            showScreen('screen-end');
         }
     </script>
 </body>
