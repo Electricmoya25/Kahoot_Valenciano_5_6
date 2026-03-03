@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BUBBLE MARINE: Castellano 5-6</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Fredoka:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bubble-pink: #ff85a1;
+            --bubble-blue: #4cc9f0;
+            --bubble-green: #4ade80;
+            --arcade-dark: #0a0e17;
+        }
+
+        body {
+            font-family: 'Fredoka', sans-serif;
+            background-color: var(--arcade-dark);
+            color: white;
+            margin: 0;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        .arcade-font { font-family: 'Press Start 2P', cursive; }
+
+        /* Estilo Bubble Bobble */
+        .bubble-ui {
+            background: rgba(255, 255, 255, 0.1);
+            border: 4px solid #fff;
+            box-shadow: 0 0 15px var(--bubble-blue), inset 0 0 10px var(--bubble-blue);
+            border-radius: 2rem;
+        }
+
+        .bubble-btn {
+            transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            border: 3px solid transparent;
+        }
+
+        .bubble-btn:hover {
+            transform: scale(1.05);
+            border-color: #fff;
+            box-shadow: 0 0 20px var(--bubble-pink);
+        }
+
+        /* Animación de Burbujas de fondo */
+        @keyframes floatUp {
+            0% { transform: translateY(110vh) translateX(0); opacity: 1; }
+            100% { transform: translateY(-10vh) translateX(20px); opacity: 0; }
+        }
+
+        .bg-bubble {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            pointer-events: none;
+            animation: floatUp var(--d) linear infinite;
+        }
+
+        /* Efecto CRT */
+        .crt::before {
+            content: " ";
+            display: block;
+            position: absolute;
+            top: 0; left: 0; bottom: 0; right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.1) 50%), 
+                        linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
+            z-index: 100;
+            background-size: 100% 3px, 3px 100%;
+            pointer-events: none;
+        }
+
+        .hidden-screen { display: none !important; }
+
+        .scanline {
+            width: 100%;
+            height: 2px;
+            background: rgba(255, 255, 255, 0.1);
+            position: absolute;
+            animation: scan 4s linear infinite;
+            z-index: 10;
+        }
+
+        @keyframes scan { from { top: 0; } to { top: 100%; } }
+
+        .blink { animation: blink 1s step-end infinite; }
+        @keyframes blink { 50% { opacity: 0; } }
+    </style>
+</head>
+<body class="crt">
+    <div id="bg-bubbles-container"></div>
+    <div class="scanline"></div>
+
+    <!-- MAIN WRAPPER -->
+    <div class="flex items-center justify-center min-h-screen p-4">
+        
+        <div id="game-box" class="w-full max-w-2xl h-[90vh] bubble-ui relative overflow-hidden flex flex-col bg-[#050811]">
+            
+            <!-- HUD -->
+            <div id="hud" class="hidden-screen p-4 border-b-4 border-white flex justify-between items-center bg-blue-900/30">
+                <div>
+                    <p class="arcade-font text-[8px] text-cyan-300">SHIP: <span id="hud-name">---</span></p>
+                    <div class="flex items-center gap-2 mt-2">
+                        <div class="w-24 h-4 border-2 border-white overflow-hidden bg-black">
+                            <div id="fuel-fill" class="h-full bg-green-400 transition-all duration-300" style="width: 0%"></div>
+                        </div>
+                        <span id="fuel-val" class="arcade-font text-[8px]">0%</span>
+                    </div>
+                </div>
+                <div id="ship-icon" class="text-4xl">⛵</div>
+            </div>
+
+            <!-- SCREENS -->
+            
+            <!-- 1. START -->
+            <div id="screen-start" class="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-12">
+                <div class="relative">
+                    <h1 class="arcade-font text-3xl md:text-4xl text-pink-400 drop-shadow-lg italic">BUBBLE<br>MARINE</h1>
+                    <p class="arcade-font text-[10px] text-cyan-300 mt-4 tracking-widest">CASTELLANO 5 & 6</p>
+                </div>
+                
+                <div class="text-6xl animate-bounce">🚢</div>
+
+                <div class="space-y-4 w-full max-w-xs">
+                    <input type="text" id="name-input" placeholder="NOMBRE DEL CAPITÁN" 
+                        class="w-full bg-black border-4 border-white p-3 arcade-font text-[10px] text-pink-400 outline-none focus:border-cyan-400 uppercase">
+                    <button onclick="startGame()" class="w-full bg-pink-500 hover:bg-pink-400 text-white font-black py-4 rounded-xl arcade-font text-xs shadow-[0_5px_0_#9d174d] active:translate-y-1 active:shadow-none transition-all">
+                        INSERT COIN
+                    </button>
+                </div>
+                <p class="arcade-font text-[8px] text-slate-500 blink">PRESS START TO PLAY</p>
+            </div>
+
+            <!-- 2. MAP (OCEAN SELECT) -->
+            <div id="screen-map" class="hidden-screen flex-1 p-6 overflow-y-auto">
+                <h2 class="arcade-font text-xs text-yellow-400 mb-6 text-center">SELECCIONA UN MAR</h2>
+                <div id="ocean-grid" class="grid grid-cols-1 gap-4">
+                    <!-- Dinámico -->
+                </div>
+            </div>
+
+            <!-- 3. BRIEFING (TEORÍA) -->
+            <div id="screen-theory" class="hidden-screen flex-1 p-8 flex flex-col">
+                <div class="border-b-4 border-cyan-400 mb-4 pb-2">
+                    <h2 id="theory-title" class="arcade-font text-xs text-cyan-400">MANUAL TÉCNICO</h2>
+                </div>
+                <div id="theory-body" class="flex-1 overflow-y-auto pr-2 text-lg text-slate-200 leading-relaxed bg-white/5 p-4 rounded-xl border border-white/10">
+                    <!-- Teoría del módulo -->
+                </div>
+                <button onclick="startMission()" class="mt-6 bg-cyan-500 hover:bg-cyan-400 p-4 arcade-font text-xs text-white rounded-xl shadow-[0_5px_0_#0891b2]">
+                    ENTENDIDO, CAPITÁN
+                </button>
+            </div>
+
+            <!-- 4. QUIZ (ACTION) -->
+            <div id="screen-quiz" class="hidden-screen flex-1 p-6 flex flex-col">
+                <div class="flex justify-between mb-4">
+                    <span id="quiz-mod-name" class="arcade-font text-[8px] text-pink-400">MARE 01</span>
+                    <span id="quiz-count" class="arcade-font text-[8px] text-white">1/3</span>
+                </div>
+                <div class="bg-blue-900/40 p-6 border-4 border-white rounded-3xl mb-8 min-h-[140px] flex items-center justify-center text-center">
+                    <h3 id="question-text" class="text-xl font-bold tracking-wide"></h3>
+                </div>
+                <div id="options-grid" class="grid grid-cols-1 gap-4">
+                    <!-- Botones burbuja -->
+                </div>
+            </div>
+
+            <!-- 5. FEEDBACK -->
+            <div id="screen-feedback" class="hidden-screen flex-1 p-8 flex flex-col items-center justify-center text-center">
+                <div id="feed-emoji" class="text-7xl mb-4"></div>
+                <h2 id="feed-title" class="arcade-font text-xl mb-6"></h2>
+                <div class="bg-black/50 border-2 border-white/20 p-6 rounded-3xl w-full mb-8">
+                    <p id="feed-msg" class="text-lg italic text-slate-300"></p>
+                </div>
+                <button id="btn-next" class="w-full bg-yellow-500 hover:bg-yellow-400 arcade-font text-xs py-4 rounded-xl shadow-[0_5px_0_#854d0e]">
+                    SIGUIENTE OLA
+                </button>
+            </div>
+
+            <!-- 6. GAME OVER / WIN -->
+            <div id="screen-end" class="hidden-screen flex-1 p-8 flex flex-col items-center justify-center text-center space-y-8">
+                <div id="end-visual" class="text-9xl">🗽</div>
+                <h2 id="end-rank" class="arcade-font text-xl text-yellow-400">RANK: S</h2>
+                <p id="end-msg" class="text-lg text-slate-400"></p>
+                <div class="arcade-font text-xl border-4 border-white p-6 bg-pink-500/20">
+                    FINAL FUEL: <span id="final-fuel">0</span>%
+                </div>
+                <button onclick="location.reload()" class="arcade-font text-[10px] bg-white text-black p-4 hover:bg-slate-200">
+                    RETRY? (INSERT COIN)
+                </button>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        // CONFIGURACIÓN DE AUDIO (8-BIT)
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        function playSound(freq, type, duration) {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = type;
+            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+            gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + duration);
+        }
+
+        const sounds = {
+            start: () => { playSound(440, 'square', 0.1); setTimeout(()=>playSound(880, 'square', 0.2), 100); },
+            correct: () => { playSound(523, 'sine', 0.1); setTimeout(()=>playSound(1046, 'sine', 0.2), 50); },
+            wrong: () => { playSound(220, 'sawtooth', 0.3); playSound(110, 'sawtooth', 0.3); },
+            click: () => playSound(600, 'sine', 0.05)
+        };
+
+        // CONTENIDO COMPLETO (Temas 5 y 6)
+        const missions = [
+            {
+                id: 1, title: "Mar de Prefijos", icon: "📍",
+                theory: "Los <b>prefijos</b> se añaden al principio. <br>• <b>sub-</b> (debajo de): subsuelo.<br>• <b>ante-</b> (delante de): antesala.<br>• <b>extra-</b> (fuera de): extraoficial.<br>• <b>sobre-</b> (encima de): sobrepasar.",
+                questions: [
+                    { q: "¿Qué prefijo significa 'delante de'?", o: ["Extra-", "Ante-", "Sub-"], c: 1, e: "Ante- significa prioridad o posición delantera." },
+                    { q: "En 'sobrevolar', el prefijo indica...", o: ["Posición inferior", "Posición superior", "Fuera de"], c: 1, e: "Sobre- significa por encima de." }
+                ]
+            },
+            {
+                id: 2, title: "Arrecife de la V", icon: "✍️",
+                theory: "Se escriben con <b>v</b> los adjetivos terminados en:<br><b>-ave, -avo, -eva, -evo, -eve, -iva, -ivo</b>.<br>Ejemplos: suave, octavo, nueva, longevo, breve, deportiva, creativo.",
+                questions: [
+                    { q: "¿Cuál es correcto?", o: ["Nuebo", "Nueva", "Nuera"], c: 1, e: "Nueva es un adjetivo terminado en -eva." },
+                    { q: "Antónimo de 'alegre' con V:", o: ["Grave", "Grabe", "Triste"], c: 0, e: "Grave termina en -ave y va con v." }
+                ]
+            },
+            {
+                id: 3, title: "Abismo de Cantidades", icon: "🔢",
+                theory: "• <b>Cardinales</b>: Cantidad exacta (uno, dos...).<br>• <b>Ordinales</b>: Orden (primero, décimo...).<br>• <b>Indefinidos</b>: Cantidad imprecisa (muchos, pocos, bastantes).",
+                questions: [
+                    { q: "'Vigésimo' es un...", o: ["Cardinal", "Ordinal", "Indefinido"], c: 1, e: "Indica orden en una serie." },
+                    { q: "'Bastantes' es un...", o: ["Ordinal", "Cardinal", "Indefinido"], c: 2, e: "Indica cantidad no exacta." }
+                ]
+            },
+            {
+                id: 4, title: "Fosa Poética", icon: "📖",
+                theory: "<b>Rima consonante</b>: Coinciden vocales y consonantes desde la tónica (tesoro-coro).<br><b>Rima asonante</b>: Solo coinciden vocales (casa-mapa).",
+                questions: [
+                    { q: "Rima entre 'ventana' y 'campana':", o: ["Asonante", "Consonante", "Libre"], c: 1, e: "Coinciden todos los sonidos finales." },
+                    { q: "Rima entre 'sombrero' y 'viento':", o: ["Consonante", "Asonante", "No riman"], c: 1, e: "Solo coinciden las vocales (e-o)." }
+                ]
+            },
+            {
+                id: 5, title: "Corrientes de Sufijos", icon: "⚙️",
+                theory: "Los <b>sufijos</b> se añaden al final de la palabra para formar nuevas.<br>Ejemplos: flautista (-ista), panadería (-ería), cucharada (-ada).",
+                questions: [
+                    { q: "Sufijo en 'violinista':", o: ["-ista", "Violin-", "No tiene"], c: 0, e: "-ista indica profesión o actividad." },
+                    { q: "¿Qué palabra tiene sufijo?", o: ["Subsuelo", "Cocinero", "Contra"], c: 1, e: "-ero es el sufijo añadido a cocina." }
+                ]
+            },
+            {
+                id: 6, title: "Foso -GER / -GIR",
+                icon: "🔡",
+                theory: "Verbos en <b>-ger</b> y <b>-gir</b> van con <b>G</b> (recoger, elegir).<br>Excepciones: <b>tejer</b> y <b>crujir</b>.",
+                questions: [
+                    { q: "Completa: 'Debo esco_er un libro'", o: ["g", "j", "h"], c: 0, e: "Escoger termina en -ger, va con G." },
+                    { q: "Se escribe con J:", o: ["Elegir", "Crujir", "Rugir"], c: 1, e: "Crujir es una de las dos excepciones." }
+                ]
+            },
+            {
+                id: 7, title: "Triángulo del Verbo", icon: "🕒",
+                theory: "<b>Infinitivo</b>: Nombre del verbo.<br>1ª: -ar | 2ª: -er | 3ª: -ir.<br><b>Raíz</b>: Parte que queda al quitar la terminación del infinitivo.",
+                questions: [
+                    { q: "Conjugación de 'partir':", o: ["1ª", "2ª", "3ª"], c: 2, e: "Termina en -ir." },
+                    { q: "Raíz de 'cantaremos':", o: ["Cantare-", "Cant-", "Can-"], c: 1, e: "Viene de cantar, quitamos -ar." }
+                ]
+            },
+            {
+                id: 8, title: "Isla de los Cómics", icon: "💬",
+                theory: "• <b>Eslogan</b>: Frase corta y pegadiza.<br>• <b>Bocadillos</b>: Donde hablan los personajes.<br>• <b>Onomatopeyas</b>: Sonidos (¡Zas!, ¡Boom!).",
+                questions: [
+                    { q: "¿Qué es '¡Ring!' en un cómic?", o: ["Eslogan", "Bocadillo", "Onomatopeya"], c: 2, e: "Representa el sonido de un timbre." },
+                    { q: "Frase para animar a comprar:", o: ["Sufijo", "Eslogan", "Infinitivo"], c: 1, e: "El eslogan es la frase publicitaria." }
+                ]
+            }
+        ];
+
+        let state = {
+            pilot: "",
+            score: 0,
+            doneMods: [],
+            currentMod: null,
+            currentQIdx: 0
+        };
+
+        // UI Logic
+        function showScreen(id) {
+            document.querySelectorAll('#game-box > div').forEach(d => {
+                if(d.id !== 'hud') d.classList.add('hidden-screen');
+            });
+            document.getElementById(id).classList.remove('hidden-screen');
+        }
+
+        function startGame() {
+            const val = document.getElementById('name-input').value.trim();
+            if(!val) return alert("¡CAPITÁN, IDENTIFÍQUESE!");
+            state.pilot = val;
+            document.getElementById('hud-name').innerText = val;
+            document.getElementById('hud').classList.remove('hidden-screen');
+            sounds.start();
+            renderMap();
+            showScreen('screen-map');
+        }
+
+        function renderMap() {
+            const grid = document.getElementById('ocean-grid');
+            grid.innerHTML = "";
+            missions.forEach(m => {
+                const done = state.doneMods.includes(m.id);
+                const btn = document.createElement('button');
+                btn.className = `bubble-btn p-4 rounded-2xl flex items-center justify-between arcade-font text-[10px] ${done ? 'bg-green-900/40 opacity-60' : 'bg-blue-600/30'}`;
+                btn.innerHTML = `<span>${m.icon} ${m.title}</span> <span>${done ? 'V' : '>'}</span>`;
+                if(!done) btn.onclick = () => { sounds.click(); openTheory(m); };
+                grid.appendChild(btn);
+            });
+
+            if(state.doneMods.length === missions.length) finalize();
+        }
+
+        function openTheory(mod) {
+            state.currentMod = mod;
+            document.getElementById('theory-title').innerText = `MANUAL: ${mod.title}`;
+            document.getElementById('theory-body').innerHTML = mod.theory;
+            showScreen('screen-theory');
+        }
+
+        function startMission() {
+            state.currentQIdx = 0;
+            sounds.click();
+            renderQuestion();
+            showScreen('screen-quiz');
+        }
+
+        function renderQuestion() {
+            const q = state.currentMod.questions[state.currentQIdx];
+            document.getElementById('quiz-mod-name').innerText = state.currentMod.title;
+            document.getElementById('quiz-count').innerText = `${state.currentQIdx + 1}/${state.currentMod.questions.length}`;
+            document.getElementById('question-text').innerText = q.q;
+
+            const grid = document.getElementById('options-grid');
+            grid.innerHTML = "";
+            q.o.forEach((opt, i) => {
+                const b = document.createElement('button');
+                b.className = "bubble-btn bg-white/10 p-4 rounded-full text-lg font-bold hover:bg-white/20";
+                b.innerText = opt;
+                b.onclick = () => check(i);
+                grid.appendChild(b);
+            });
+        }
+
+        function check(idx) {
+            const q = state.currentMod.questions[state.currentQIdx];
+            const correct = idx === q.c;
+            
+            if(correct) {
+                state.score += (100 / (missions.length * 2)); // Para llegar a 100
+                sounds.correct();
+                document.getElementById('feed-emoji').innerText = "✨🫧";
+                document.getElementById('feed-title').innerText = "¡IMPECABLE!";
+                document.getElementById('feed-title').style.color = "var(--bubble-green)";
+            } else {
+                sounds.wrong();
+                document.getElementById('feed-emoji').innerText = "💨🔥";
+                document.getElementById('feed-title').innerText = "¡BURBUJA ROTA!";
+                document.getElementById('feed-title').style.color = "var(--bubble-pink)";
+            }
+
+            document.getElementById('feed-msg').innerHTML = q.e;
+            updateHUD();
+            showScreen('screen-feedback');
+        }
+
+        document.getElementById('btn-next').onclick = () => {
+            state.currentQIdx++;
+            if(state.currentQIdx < state.currentMod.questions.length) {
+                renderQuestion();
+                showScreen('screen-quiz');
+            } else {
+                state.doneMods.push(state.currentMod.id);
+                renderMap();
+                showScreen('screen-map');
+            }
+        };
+
+        function updateHUD() {
+            const fuel = Math.min(Math.round(state.score), 100);
+            document.getElementById('fuel-val').innerText = fuel + "%";
+            document.getElementById('fuel-fill').style.width = fuel + "%";
+            const icon = document.getElementById('ship-icon');
+            if(fuel >= 100) icon.innerText = "🔱🚢";
+            else if(fuel >= 40) icon.innerText = "🚢";
+            else icon.innerText = "⛵";
+        }
+
+        function finalize() {
+            showScreen('screen-end');
+            const fuel = Math.min(Math.round(state.score), 100);
+            document.getElementById('final-fuel').innerText = fuel;
+            const rank = document.getElementById('end-rank');
+            const vis = document.getElementById('end-visual');
+            const msg = document.getElementById('end-msg');
+
+            if(fuel >= 100) {
+                rank.innerText = "RANK: SSS (GOD)";
+                vis.innerText = "🔱🗽";
+                msg.innerText = "¡Eres el Rey del Atlántico! Has llegado a Nueva York y te han entregado las llaves de la ciudad.";
+            } else if(fuel >= 40) {
+                rank.innerText = "RANK: A (CAPTAIN)";
+                vis.innerText = "🗽🛬";
+                msg.innerText = "¡Bienvenido a América! Tu navegación ha sido experta y has superado los temas 5 y 6.";
+            } else {
+                rank.innerText = "RANK: D (LOST)";
+                vis.innerText = "🦈🌊";
+                msg.innerText = "Tu barco se hundió cerca de las Azores. ¡Vuelve a estudiar el manual del capitán!";
+            }
+        }
+
+        // Background bubbles
+        function createBGBubbles() {
+            const container = document.getElementById('bg-bubbles-container');
+            for(let i=0; i<20; i++) {
+                const b = document.createElement('div');
+                b.className = 'bg-bubble';
+                const size = Math.random() * 40 + 10;
+                b.style.width = size + 'px';
+                b.style.height = size + 'px';
+                b.style.left = Math.random() * 100 + 'vw';
+                b.style.setProperty('--d', (Math.random() * 5 + 5) + 's');
+                b.style.animationDelay = (Math.random() * 5) + 's';
+                container.appendChild(b);
+            }
+        }
+        createBGBubbles();
+    </script>
+</body>
+</html>
