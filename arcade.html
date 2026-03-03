@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CASTEL-INVADERS: Atlantic Flight</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Fredoka:wght@300..700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --pixel-blue: #00ffff;
+            --pixel-pink: #ff00ff;
+            --pixel-yellow: #ffff00;
+            --arcade-bg: #050510;
+        }
+
+        body {
+            font-family: 'Fredoka', sans-serif;
+            background-color: var(--arcade-bg);
+            color: white;
+            margin: 0;
+            overflow: hidden;
+        }
+
+        .arcade-font {
+            font-family: 'Press Start 2P', cursive;
+        }
+
+        /* Scanline Effect */
+        body::before {
+            content: " ";
+            display: block;
+            position: absolute;
+            top: 0; left: 0; bottom: 0; right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), 
+                        linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            z-index: 100;
+            background-size: 100% 4px, 3px 100%;
+            pointer-events: none;
+        }
+
+        .crt-glow {
+            text-shadow: 0 0 10px var(--pixel-blue);
+        }
+
+        .btn-retro {
+            image-rendering: pixelated;
+            border: 4px solid #fff;
+            box-shadow: 4px 4px 0px #555;
+            transition: all 0.1s;
+        }
+
+        .btn-retro:active {
+            transform: translate(2px, 2px);
+            box-shadow: 2px 2px 0px #222;
+        }
+
+        .hidden-screen {
+            display: none !important;
+        }
+
+        /* Parallax Clouds */
+        @keyframes cloudMove {
+            from { transform: translateX(100vw); }
+            to { transform: translateX(-20vw); }
+        }
+
+        .cloud {
+            position: absolute;
+            animation: cloudMove linear infinite;
+            pointer-events: none;
+            z-index: 0;
+            opacity: 0.2;
+        }
+
+        .module-item {
+            background: rgba(255, 255, 255, 0.05);
+            border-left: 4px solid var(--pixel-blue);
+            transition: all 0.3s;
+        }
+
+        .module-item:hover:not(.completed) {
+            background: rgba(0, 255, 255, 0.15);
+            transform: scale(1.02);
+        }
+
+        .completed {
+            border-left: 4px solid #4ade80;
+            opacity: 0.7;
+        }
+
+        /* Cabina effect */
+        .cockpit-frame {
+            border: 8px solid #2d3748;
+            box-shadow: inset 0 0 50px rgba(0,0,0,0.8);
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen">
+
+    <div id="clouds-container"></div>
+
+    <div id="game-container" class="w-full max-w-2xl h-[90vh] cockpit-frame bg-[#0a0a20] relative z-10 flex flex-col overflow-hidden rounded-lg">
+        
+        <!-- TOP HUD -->
+        <div id="hud" class="hidden-screen border-b-4 border-slate-700 p-4 flex justify-between items-center bg-slate-900">
+            <div class="flex flex-col gap-1">
+                <span class="arcade-font text-[10px] text-cyan-400">PILOT: <span id="display-name">---</span></span>
+                <div class="flex items-center gap-2">
+                    <span class="arcade-font text-[10px]">FUEL:</span>
+                    <div class="w-32 bg-slate-800 h-4 border-2 border-slate-600">
+                        <div id="fuel-bar" class="bg-yellow-400 h-full transition-all duration-500" style="width: 0%"></div>
+                    </div>
+                    <span id="fuel-val" class="arcade-font text-[10px] text-yellow-400">0%</span>
+                </div>
+            </div>
+            <div id="status-icon" class="text-4xl animate-pulse">🛩️</div>
+        </div>
+
+        <!-- PANTALLA INICIO -->
+        <div id="screen-start" class="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-8">
+            <h1 class="arcade-font text-3xl md:text-4xl text-cyan-400 leading-tight crt-glow">
+                CASTEL-FLIGHT<br>1992
+            </h1>
+            <div class="text-6xl animate-bounce">✈️</div>
+            <div class="space-y-4 w-full max-w-xs">
+                <input type="text" id="input-name" placeholder="ENTER PILOT NAME" 
+                    class="w-full bg-black border-4 border-cyan-400 p-4 arcade-font text-xs text-cyan-400 focus:outline-none placeholder-cyan-900">
+                <button onclick="initGame()" class="btn-retro w-full bg-cyan-600 hover:bg-cyan-500 p-4 arcade-font text-sm">
+                    START MISSION
+                </button>
+            </div>
+            <p class="arcade-font text-[8px] text-slate-500 tracking-widest">© 2025 GEMINI ARCADE SYSTEMS</p>
+        </div>
+
+        <!-- DASHBOARD (MAPA DE MISIONES) -->
+        <div id="screen-map" class="hidden-screen flex-1 p-6 flex flex-col">
+            <h2 class="arcade-font text-sm text-pink-500 mb-6">SELECT SECTOR:</h2>
+            <div id="module-grid" class="space-y-3 overflow-y-auto pr-2 custom-scrollbar">
+                <!-- Injected by JS -->
+            </div>
+        </div>
+
+        <!-- BRIEFING (TEORÍA) -->
+        <div id="screen-theory" class="hidden-screen flex-1 p-8 flex flex-col overflow-y-auto">
+            <div class="border-4 border-pink-500 p-2 mb-6">
+                <h2 class="arcade-font text-xs text-pink-500">MISSION BRIEFING</h2>
+            </div>
+            <div id="theory-content" class="text-slate-300 space-y-4 text-lg bg-black/40 p-6 border-2 border-slate-700 leading-relaxed">
+                <!-- Theory here -->
+            </div>
+            <button onclick="startQuiz()" class="mt-8 btn-retro bg-pink-600 p-4 arcade-font text-xs">
+                ACCEPT MISSION
+            </button>
+        </div>
+
+        <!-- QUIZ (INTERFACES DE COMBATE) -->
+        <div id="screen-quiz" class="hidden-screen flex-1 p-6 flex flex-col">
+            <div id="quiz-header" class="mb-4 flex justify-between">
+                <span class="arcade-font text-[10px] text-pink-400" id="quiz-mod-title">SECTOR 01</span>
+                <span class="arcade-font text-[10px] text-slate-500" id="quiz-progress">01/04</span>
+            </div>
+            <div class="bg-black/60 p-6 border-2 border-cyan-900 rounded-sm mb-6 min-h-[120px] flex items-center">
+                <h3 id="question-text" class="text-xl font-bold text-white tracking-wide"></h3>
+            </div>
+            <div id="options-grid" class="grid grid-cols-1 gap-4">
+                <!-- Options -->
+            </div>
+        </div>
+
+        <!-- FEEDBACK (ESTADO DE IMPACTO) -->
+        <div id="screen-feedback" class="hidden-screen flex-1 p-8 flex flex-col items-center justify-center text-center">
+            <div id="feed-status" class="arcade-font text-2xl mb-8">HIT!</div>
+            <div class="bg-slate-900 border-4 border-slate-700 p-6 w-full mb-8">
+                <p id="feed-explanation" class="text-slate-300 text-lg italic"></p>
+            </div>
+            <button id="btn-continue" class="btn-retro bg-blue-600 p-4 arcade-font text-xs w-full">
+                NEXT WAVE
+            </button>
+        </div>
+
+        <!-- FINAL -->
+        <div id="screen-end" class="hidden-screen flex-1 p-8 flex flex-col items-center justify-center text-center">
+            <div id="end-rank" class="arcade-font text-2xl text-yellow-400 mb-4 animate-pulse">RANK: S</div>
+            <div id="end-visual" class="text-9xl mb-6">🗽</div>
+            <h2 id="end-title" class="arcade-font text-xl text-white mb-4">ARRIVED IN NY</h2>
+            <p id="end-message" class="text-slate-400 mb-8"></p>
+            <div class="arcade-font text-lg text-cyan-400 border-2 border-cyan-400 p-4 mb-8">
+                TOTAL FUEL: <span id="final-score">0</span>%
+            </div>
+            <button onclick="location.reload()" class="btn-retro bg-slate-700 p-4 arcade-font text-xs">
+                INSERT COIN (RESTART)
+            </button>
+        </div>
+
+    </div>
+
+    <script>
+        // CONFIGURACIÓN DE DATOS (Módulos con Teoría + Preguntas Dificultad Alta)
+        const missionData = [
+            {
+                id: 1,
+                title: "PREFIJOS DE LUGAR",
+                theory: `Los <b>prefijos</b> son partículas que se añaden al principio de una palabra para cambiar su significado.<br><br>• <b>SUB-</b>: Significa 'debajo de' (Submarino).<br>• <b>ANTE-</b>: Significa 'delante de' (Antecámara).<br>• <b>EXTRA-</b>: Significa 'fuera de' (Extracomunitario).<br>• <b>SOBRE-</b>: Significa 'encima de' (Sobrecarga).`,
+                questions: [
+                    { q: "En un análisis morfológico, ¿qué valor aporta el prefijo en la palabra 'antesala'?", o: ["Posición inferior", "Prioridad espacial", "Ausencia de sala"], c: 1, e: "El prefijo 'ante-' indica que la sala está situada DELANTE de la principal." },
+                    { q: "Si un científico habla de vida 'extraterrestre', ¿qué regla de situación aplica?", o: ["Situación intermedia", "Situación fuera de un límite", "Situación superior"], c: 1, e: "'Extra-' significa literalmente fuera de, en este caso, fuera de la Tierra." },
+                    { q: "¿Cuál es el antónimo léxico de 'sobrevalorar' usando prefijos?", o: ["Antevalorar", "Subvalorar", "Extravalorar"], c: 1, e: "'Sub-' (debajo) es el opuesto directo a 'sobre-' (encima) en escalas de valor." }
+                ]
+            },
+            {
+                id: 2,
+                title: "ADJETIVOS TERMINADOS EN V",
+                theory: `Regla de Oro: Se escriben con <b>V</b> todos los adjetivos terminados en:<br><br><b>-AVE, -AVO, -EVA, -EVO, -IVA, -IVO, -EVE</b><br><br><i>Ejemplos:</i> Suave, octavo, nueva, longevo, creativa, deportivo, leve.`,
+                questions: [
+                    { q: "Identifica la opción donde TODOS los adjetivos cumplen la regla de la 'V':", o: ["Lonjevo, grave, activo", "Suave, breve, decisivo", "Nuebo, leve, esclavo"], c: 1, e: "Lonjevo y Nuebo son errores. La lista 'Suave, breve, decisivo' es correcta." },
+                    { q: "¿Por qué 'estribo' se escribe con B y 'estribo' (de estribar) no es una excepción a la regla?", o: ["Porque es un nombre, no un adjetivo", "Porque acaba en -ibo", "Es una excepción"], c: 0, e: "¡Exacto! La regla solo aplica a ADJETIVOS. 'Estribo' es un sustantivo." }
+                ]
+            },
+            {
+                id: 3,
+                title: "DETERMINANTES Y PRONOMBRES",
+                theory: `• <b>Numerales Cardinales</b>: Cantidad exacta (uno, dos, cien).<br>• <b>Numerales Ordinales</b>: Orden (primero, décimo, vigésimo).<br>• <b>Indefinidos</b>: Cantidad imprecisa (muchos, bastantes, algunos, pocos).`,
+                questions: [
+                    { q: "En la frase 'Llegó en decimoprimer lugar', la palabra subrayada es un...", o: ["Ordinal", "Cardinal", "Indefinido"], c: 0, e: "Indica orden en una serie, por tanto es un Numeral Ordinal." },
+                    { q: "Diferencia: 'Vinieron pocos' vs 'Vinieron pocos amigos'. En la primera, 'pocos' es:", o: ["Determinante Indefinido", "Pronombre Indefinido", "Numeral"], c: 1, e: "Al no acompañar a un nombre, sustituye al sustantivo, siendo un Pronombre." }
+                ]
+            },
+            {
+                id: 4,
+                title: "ORTOGRAFÍA G / J",
+                theory: `Se escriben con <b>G</b> los verbos que terminan en <b>-GER</b> o <b>-GIR</b>.<br><br>Excepciones Críticas: <b>TEJER</b> y <b>CRUJIR</b>.<br><br>También se escribe con G la sílaba <b>GEN</b> (gente, origen), excepto: jengibre, berenjena y ajenjo.`,
+                questions: [
+                    { q: "Selecciona la frase ortográficamente perfecta:", o: ["Me gusta crujir el pan", "Debemos cojer el tren", "Me gusta crugir el pan"], c: 0, e: "Crujir es la excepción a la regla de -gir, por eso va con J." },
+                    { q: "El origen de la palabra 'protejer' es erróneo porque:", o: ["Acaba en -jer", "Viene de proteger", "Es una excepción"], c: 1, e: "Proteger termina en -ger y NO es una excepción, por tanto va con G." }
+                ]
+            },
+            {
+                id: 5,
+                title: "GRAMÁTICA: EL VERBO",
+                theory: `El <b>Infinitivo</b> es el nombre del verbo. Existen tres conjugaciones:<br>1ª: -AR | 2ª: -ER | 3ª: -IR.<br><br><b>Raíz y Desinencia</b>: Quitamos -ar, -er, -ir al infinitivo y lo que queda es la raíz (ej: CANT-ar).`,
+                questions: [
+                    { q: "¿Cuál es la raíz del verbo 'reiremos'?", o: ["Reir-", "Re-", "Reir-e"], c: 1, e: "Infinitivo 'Reír' menos '-ir' = raíz 'Re-'." },
+                    { q: "¿Qué forma verbal NO pertenece a la segunda conjugación?", o: ["Comeremos", "Leyendo", "Viviría"], c: 2, e: "Viviría viene de Vivir (3ª conjugación -ir)." }
+                ]
+            }
+        ];
+
+        // Estado del Juego
+        let state = {
+            pilot: "",
+            fuel: 0,
+            activeMod: null,
+            currentQ: 0,
+            doneMods: []
+        };
+
+        // UI Helpers
+        function showScreen(id) {
+            document.querySelectorAll('#game-container > div').forEach(d => {
+                if(d.id !== 'hud') d.classList.add('hidden-screen');
+            });
+            document.getElementById(id).classList.remove('hidden-screen');
+        }
+
+        // Init Game
+        function initGame() {
+            const name = document.getElementById('input-name').value.trim();
+            if(!name) return alert("PILOT NAME REQUIRED!");
+            state.pilot = name;
+            document.getElementById('display-name').innerText = name;
+            document.getElementById('hud').classList.remove('hidden-screen');
+            renderMap();
+            showScreen('screen-map');
+        }
+
+        // Render Map
+        function renderMap() {
+            const grid = document.getElementById('module-grid');
+            grid.innerHTML = "";
+            missionData.forEach(m => {
+                const isDone = state.doneMods.includes(m.id);
+                const item = document.createElement('div');
+                item.className = `module-item p-4 flex justify-between items-center cursor-pointer ${isDone ? 'completed' : ''}`;
+                item.innerHTML = `
+                    <div class="flex flex-col">
+                        <span class="arcade-font text-[10px] ${isDone ? 'text-green-400' : 'text-cyan-400'}">${m.title}</span>
+                        <span class="text-[10px] text-slate-500 uppercase">${isDone ? 'DATA EXTRACTED' : 'SECTOR LOCKED'}</span>
+                    </div>
+                    <div class="arcade-font text-xs">${isDone ? '✅' : '>>'}</div>
+                `;
+                if(!isDone) item.onclick = () => openBriefing(m);
+                grid.appendChild(item);
+            });
+
+            if(state.doneMods.length === missionData.length) {
+                setTimeout(finalizeMission, 1000);
+            }
+        }
+
+        function openBriefing(mod) {
+            state.activeMod = mod;
+            document.getElementById('theory-content').innerHTML = mod.theory;
+            showScreen('screen-theory');
+        }
+
+        function startQuiz() {
+            state.currentQ = 0;
+            updateQuiz();
+            showScreen('screen-quiz');
+        }
+
+        function updateQuiz() {
+            const mod = state.activeMod;
+            const q = mod.questions[state.currentQ];
+            
+            document.getElementById('quiz-mod-title').innerText = mod.title;
+            document.getElementById('quiz-progress').innerText = `${state.currentQ + 1}/${mod.questions.length}`;
+            document.getElementById('question-text').innerText = q.q;
+
+            const grid = document.getElementById('options-grid');
+            grid.innerHTML = "";
+            q.o.forEach((opt, i) => {
+                const btn = document.createElement('button');
+                btn.className = "btn-retro bg-slate-800 p-4 text-left text-sm hover:bg-slate-700 transition-colors";
+                btn.innerHTML = `<span class="arcade-font text-[10px] text-pink-500 mr-2">${String.fromCharCode(65+i)}:</span> ${opt}`;
+                btn.onclick = () => checkAnswer(i);
+                grid.appendChild(btn);
+            });
+        }
+
+        function checkAnswer(idx) {
+            const q = state.activeMod.questions[state.currentQ];
+            const isCorrect = idx === q.c;
+
+            if(isCorrect) {
+                state.fuel += Math.floor(100 / (missionData.length * 2.5)); // Ajuste de fuel para llegar a 100
+                if(state.fuel > 100) state.fuel = 100;
+                document.getElementById('feed-status').innerText = "SYSTEM REPAIRED!";
+                document.getElementById('feed-status').className = "arcade-font text-2xl mb-8 text-green-400";
+            } else {
+                document.getElementById('feed-status').innerText = "HULL DAMAGE!";
+                document.getElementById('feed-status').className = "arcade-font text-2xl mb-8 text-red-500";
+            }
+
+            document.getElementById('feed-explanation').innerHTML = q.e;
+            updateHUD();
+            showScreen('screen-feedback');
+        }
+
+        document.getElementById('btn-continue').onclick = () => {
+            state.currentQ++;
+            if(state.currentQ < state.activeMod.questions.length) {
+                updateQuiz();
+                showScreen('screen-quiz');
+            } else {
+                state.doneMods.push(state.activeMod.id);
+                renderMap();
+                showScreen('screen-map');
+            }
+        };
+
+        function updateHUD() {
+            document.getElementById('fuel-val').innerText = state.fuel + "%";
+            document.getElementById('fuel-bar').style.width = state.fuel + "%";
+            const icon = document.getElementById('status-icon');
+            
+            if(state.fuel >= 100) { icon.innerText = "🚀"; icon.className = "text-4xl animate-pulse text-yellow-400 crt-glow"; }
+            else if(state.fuel >= 40) { icon.innerText = "✈️"; icon.className = "text-4xl text-cyan-400"; }
+            else { icon.innerText = "🛩️"; icon.className = "text-4xl text-red-400 animate-bounce"; }
+        }
+
+        function finalizeMission() {
+            showScreen('screen-end');
+            document.getElementById('final-score').innerText = state.fuel;
+            const rank = document.getElementById('end-rank');
+            const visual = document.getElementById('end-visual');
+            const title = document.getElementById('end-title');
+            const msg = document.getElementById('end-message');
+
+            if(state.fuel >= 100) {
+                rank.innerText = "RANK: S (LEGEND)";
+                visual.innerText = "🚀🗽";
+                title.innerText = "SUPER MASTER OF LENGUA";
+                msg.innerText = "Has cruzado el océano en tiempo récord y tu avión ha evolucionado a tecnología galáctica. ¡Nueva York te aclama!";
+            } else if(state.fuel >= 40) {
+                rank.innerText = "RANK: B (SURVIVOR)";
+                visual.innerText = "🏙️🛬";
+                title.innerText = "SAFE LANDING IN NY";
+                msg.innerText = "Con el combustible justo, pero has demostrado gran habilidad. Has aterrizado en el JFK con éxito.";
+            } else {
+                rank.innerText = "RANK: F (FAIL)";
+                visual.innerText = "🛟🌊";
+                title.innerText = "LOST AT SEA";
+                msg.innerText = "No hubo suficiente fuel para alcanzar la costa. Los prefijos y la ortografía te habrían salvado...";
+            }
+        }
+
+        // Fondo de Nubes Parallax
+        function createClouds() {
+            const container = document.getElementById('clouds-container');
+            for(let i=0; i<15; i++) {
+                const cloud = document.createElement('div');
+                cloud.className = 'cloud';
+                cloud.innerText = "☁️";
+                cloud.style.fontSize = (Math.random() * 60 + 20) + 'px';
+                cloud.style.top = Math.random() * 100 + 'vh';
+                cloud.style.animationDuration = (Math.random() * 15 + 10) + 's';
+                cloud.style.animationDelay = (Math.random() * 10) + 's';
+                container.appendChild(cloud);
+            }
+        }
+        createClouds();
+    </script>
+</body>
+</html>
